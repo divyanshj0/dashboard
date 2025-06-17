@@ -18,7 +18,7 @@ const WaterProperty = () => {
                 <p className='text-lg font-medium'>Inlet Properties</p>
                 <div className="flex py-1 gap-2 items-center justify-between">
                     <p className="text-sm font-medium">Flow Rate</p>
-                    <span>1200 m<sup>2</sup>/hr</span>
+                    <span>1200 L/hr</span>
                 </div>
                 <div className="flex py-1 items-center gap-4">
                     <p className="text-sm font-medium">TDS</p>
@@ -29,7 +29,7 @@ const WaterProperty = () => {
                 <p className='text-lg font-medium'>Reject Properties</p>
                 <div className="flex py-1 items-center justify-between">
                     <p className="text-sm font-medium">Flow Rate</p>
-                    <span>50 m<sup>2</sup>/hr</span>
+                    <span>50 L/hr</span>
                 </div>
                 <div className="flex py-1 items-center gap-4">
                     <p className="text-sm font-medium">TDS</p>
@@ -40,7 +40,7 @@ const WaterProperty = () => {
                 <p className='text-lg font-medium'>Outlet Properties</p>
                     <div className="flex py-1 gap-2 items-center justify-between">
                         <p className="text-sm font-medium">Flow Rate</p>
-                        <span>1150 m<sup>2</sup>/hr</span>
+                        <span>1150 L/hr</span>
                     </div>
                     <div className="flex py-1 items-center gap-4">
                         <p className="text-sm font-medium">TDS</p>

@@ -1,10 +1,10 @@
 'use client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis,Label, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { hourlydata, dailydata, weeklydata } from '@/libs/data';
 import { FiMaximize } from "react-icons/fi";
 import { useState } from "react";
 
-export default function ChemicalChart({view}) {
+export default function ChemicalChart({ view }) {
     const [isOpen, setIsOpen] = useState(false);
     const getchartdata = () => {
         switch (view) {
@@ -19,8 +19,10 @@ export default function ChemicalChart({view}) {
     const Chart = ({ chartData, fullView }) => (
         <ResponsiveContainer width="100%" height={fullView ? 300 : 150}>
             <BarChart data={chartData}>
-                <XAxis dataKey={xKey} />
-                <YAxis />
+                <XAxis dataKey={xKey} margin={{ left: 20, right: 20 }} />
+                <YAxis >
+                    <Label value="ppm" angle={-90} position="insideLeft" dy={20} textAnchor='middle' fill='#000' />
+                </YAxis>
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="coagulant" fill="#3B82F6" />

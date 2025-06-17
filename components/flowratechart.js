@@ -1,5 +1,5 @@
 'use client';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis,Label, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { flowRateHourly, flowRateDaily, flowRateWeekly } from '@/libs/data';
 import { FiMaximize } from "react-icons/fi";
 import { useState } from "react";
@@ -22,15 +22,17 @@ export default function FlowRaterChart({ view }) {
     const Chart = ({ chartData, fullView }) => (
         <ResponsiveContainer width="100%" height={fullView ? 300 : 150}>
             <LineChart data={chartData}>
-                <XAxis dataKey={xKey} />
-                <YAxis />
+                <XAxis dataKey={xKey} margin={{ left: 20, right: 20 }} />
+                <YAxis >
+                    <Label value="Ltr/hr" angle={-90} position="insideLeft" dy={20} textAnchor='middle' fill='#000' />
+                </YAxis>
                 <Tooltip />
                 <Legend />
                 <Line dataKey="inlet" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
-                <Line dataKey="outlet" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }}/>
+                <Line dataKey="outlet" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
         </ResponsiveContainer>
-    );  
+    );
 
     return (
         <div className="bg-white h-48 w-full rounded-md shadow-md">

@@ -1,6 +1,6 @@
 'use client';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,Label
 } from 'recharts';
 import { treatedWaterHourly, treatedWaterDaily, treatedWaterWeekly } from '@/libs/data';
 import { FiMaximize } from "react-icons/fi";
@@ -23,9 +23,11 @@ export default function TreatedWaterChart({ view }) {
 
   const Chart = ({ chartData, fullView }) => (
     <ResponsiveContainer width="100%" height={fullView ? 300 : 150}>
-      <LineChart data={chartData}>
+      <LineChart data={chartData} margin={{ left: 20, right:20 }}>
         <XAxis dataKey={xKey} />
-        <YAxis />
+        <YAxis >
+          <Label value="Liters" angle={-90} position="insideLeft" dy={20}  textAnchor= 'middle' fill= '#000'/>
+        </YAxis>
         <Tooltip />
         <Legend />
         <Line type="monotone" dataKey="quantity" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
@@ -36,7 +38,7 @@ export default function TreatedWaterChart({ view }) {
   return (
     <div className="bg-white h-48 w-full rounded-md shadow-md">
       <div className="flex items-center justify-between px-2 py-1">
-        <p className="text-lg font-medium">Treated Water Quantity</p>
+        <p className="text-lg font-medium">Treated Water</p>
         <button onClick={() => setIsOpen(true)} title="Fullscreen">
           <FiMaximize />
         </button>

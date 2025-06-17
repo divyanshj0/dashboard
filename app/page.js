@@ -61,7 +61,7 @@ export default function Home() {
           <div className="p-2 h-max bg-white rounded-md shadow-md">
             <p className="text-lg font-medium">Energy Consumed per Liter</p>
             <p className="text-2xl font-bold mt-1">
-              0.25 <span className="text-base font-medium">kWh/m<sup>3</sup></span>
+              0.25 <span className="text-base font-medium">kWh/L</span>
             </p>
           </div>
           <div className=" bg-white h-max p-2 rounded-md shadow-md">
