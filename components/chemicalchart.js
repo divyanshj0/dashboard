@@ -30,7 +30,7 @@ export default function ChemicalChart({view}) {
         </ResponsiveContainer>
     );
     return (
-        <div className=" bg-white  h-max w-full rounded-md shadow-md">
+        <div className=" bg-white  h-48 w-full rounded-md shadow-md">
             <div className="flex items-center  justify-between px-2">
                 <p className="text-lg font-medium">Chemical Dosage Graph</p>
                 <button onClick={() => setIsOpen(true)} title="fullscreen">

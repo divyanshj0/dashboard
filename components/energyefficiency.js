@@ -16,7 +16,7 @@ const data = [
 const EnergyEfficiency = () => {
   return (
     <div className=" h-[190px] bg-white flex flex-col justify-center items-center rounded-md shadow-md">
-      <div className="text-lg font-medium mt-2 px-2">% Output Efficiency</div>
+      <div className="text-lg font-medium mt-2 px-2">% Energy Efficiency</div>
       <ResponsiveContainer >
         <RadialBarChart
           cx="50%"

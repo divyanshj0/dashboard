@@ -33,7 +33,7 @@ export default function FlowRaterChart({ view }) {
     );  
 
     return (
-        <div className="bg-white h-max w-full rounded-md shadow-md">
+        <div className="bg-white h-48 w-full rounded-md shadow-md">
             <div className="flex items-center justify-between px-2 py-1">
                 <p className="text-lg font-medium">Water Flow Rate</p>
                 <button onClick={() => setIsOpen(true)} title="Fullscreen">

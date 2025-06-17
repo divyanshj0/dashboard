@@ -34,16 +34,14 @@ export default function TreatedWaterChart({ view }) {
   );
 
   return (
-    <div className="bg-white h-max w-full rounded-md shadow-md">
+    <div className="bg-white h-48 w-full rounded-md shadow-md">
       <div className="flex items-center justify-between px-2 py-1">
         <p className="text-lg font-medium">Treated Water Quantity</p>
         <button onClick={() => setIsOpen(true)} title="Fullscreen">
           <FiMaximize />
         </button>
       </div>
-
       <Chart chartData={miniData} fullView={false} />
-
       {isOpen && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-70 z-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto">

@@ -84,7 +84,6 @@ export default function Home() {
         <FlowRaterChart view={view} />
         <ChemicalChart view={view} />
       </div>
-
     </main>
   );
 }
