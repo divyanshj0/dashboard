@@ -1,38 +1,41 @@
 'use client';
 import { hourlydata, dailydata, weeklydata } from '@/libs/data';
 
-export default function ChemicalDosage({view}) {
-    const getchartdata = () => {
-        switch (view) {
-            case 'hourly': return { data: hourlydata, xkey: 'hour' }
-            case 'daily': return { data: dailydata, xkey: 'day' }
-            case 'weekly': return { data: weeklydata, xkey: 'week' }
-            default: return { data: [], xkey: '' };
-        }
-    };
-    const { data, xKey } = getchartdata();
-    const average = (key) =>
-        data.length
-            ? (data.reduce((sum, d) => sum + (d[key] || 0), 0) / data.length).toFixed(1)
-            : '0.0';
-    return (
-        <>
-            <div className="text-gray-500">
-                <div className="flex py-1 items-center gap-4">
-                    <p className="text-sm font-medium">{view} Avg coagulant</p>
-                    <span>{average("coagulant")} ppm</span>
-                </div>
-                <div className="flex py-1 items-center gap-4">
-                    <p className="text-sm font-medium">{view} Avg Antiscalent</p>
-                    <span>{average("antiscalant")} ppm</span>
-                </div>
-                <div className="flex py-1 items-center gap-4">
-                    <p className="text-sm font-medium">{view} Avg ph Adjuster</p>
-                    <span>{average("ph_adjuster")} ppm</span>
-                </div>
-            </div>
+export default function ChemicalDosage({ view }) {
+  const getChartData = () => {
+    switch (view) {
+      case 'hourly':
+        return { data: hourlydata, xKey: 'hour' };
+      case 'daily':
+        return { data: dailydata, xKey: 'day' };
+      case 'weekly':
+        return { data: weeklydata, xKey: 'week' };
+      default:
+        return { data: [], xKey: '' };
+    }
+  };
 
-            
-        </>
-    )
+  const { data } = getChartData();
+
+  const average = (key) =>
+    data.length
+      ? (data.reduce((sum, d) => sum + (d[key] || 0), 0) / data.length).toFixed(1)
+      : '0.0';
+
+  return (
+    <div className="text-gray-700 mt-2 flex flex-col gap-2">
+      <div className="flex justify-between items-center text-sm">
+        <p className="font-medium capitalize">{view} Avg Coagulant</p>
+        <span>{average('coagulant')} ppm</span>
+      </div>
+      <div className="flex justify-between items-center text-sm">
+        <p className="font-medium capitalize">{view} Avg Antiscalant</p>
+        <span>{average('antiscalant')} ppm</span>
+      </div>
+      <div className="flex justify-between items-center text-sm">
+        <p className="font-medium capitalize">{view} Avg pH Adjuster</p>
+        <span>{average('ph_adjuster')} ppm</span>
+      </div>
+    </div>
+  );
 }
