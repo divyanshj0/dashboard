@@ -56,7 +56,8 @@ export default function Home() {
         {/* Left Container */}
         <div className="w-full lg:w-3/4 flex flex-col gap-2">
           <WaterProperty />
-          <img src="/Raw Water.png" alt="mimic" className="rounded-md shadow-md w-full max-h-[307px] object-cover" />
+            <img src="/Raw Water.png" alt="mimic" className="rounded-md shadow-md w-full max-h-[315px] object-cover" />
+          
         </div>
 
         {/* Right Container */}
