@@ -96,10 +96,13 @@ export default function Home() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mx-4 mt-3 pb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mx-4 mt-3 ">
         <TreatedWaterChart view={view} />
         <FlowRaterChart view={view} />
         <ChemicalChart view={view} />
+      </div>
+      <div className="bg-blue-100  text-center mx-4 mt-2 py-4 rounded-md">
+        <p className="text-md text-black">© {new Date().getFullYear()} All rights reserved.Developed and managed by The Elite Pro </p>
       </div>
     </main>
   );
