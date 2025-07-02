@@ -5,15 +5,16 @@ import {
   PolarAngleAxis,
 } from 'recharts';
 
-const data = [
-  {
-    name: 'Efficiency',
-    value: 88,
-    fill: '#83a6ed',
-  },
-];
+;
 
-const EnergyEfficiency = () => {
+const EnergyEfficiency = ({value=0}) => {
+  const data = [
+    {
+      name: 'Efficiency',
+      value: parseFloat(value),
+      fill: '#83a6ed',
+    },
+  ]
   return (
     <div className="h-[190px] w-full bg-white flex flex-col justify-center items-center rounded-md shadow-md">
       <div className="text-lg font-medium mt-2 px-2">% Energy Efficiency</div>

@@ -5,15 +5,15 @@ import {
   PolarAngleAxis,
 } from 'recharts';
 
-const data = [
-  {
-    name: 'Efficiency',
-    value: 95,
-    fill: '#83a6ed',
-  },
-];
 
-const Efficiency = () => {
+const Efficiency = ({ value = 0 }) => {
+  const chartData = [
+    {
+      name: 'Efficiency',
+      value: parseFloat(value), // Ensure number
+      fill: '#83a6ed',
+    },
+  ];
   return (
     <div className="h-[190px] w-full bg-white flex flex-col justify-center items-center rounded-md shadow-md">
       <div className="text-lg font-medium mt-2 px-2 text-center">% Output Efficiency</div>
@@ -25,7 +25,7 @@ const Efficiency = () => {
             innerRadius="60%"
             outerRadius="80%"
             barSize={15}
-            data={data}
+            data={chartData}
             startAngle={90}
             endAngle={-270}
           >
@@ -41,7 +41,7 @@ const Efficiency = () => {
         </ResponsiveContainer>
         {/* Center Text */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xl font-semibold">{`${data[0].value}%`}</span>
+          <span className="text-xl font-semibold">{`${chartData[0].value}%`}</span>
         </div>
       </div>
     </div>
