@@ -17,6 +17,14 @@ export default function Dashboard() {
   const [efficiency, setEfficiency] = useState(null);
   const [energyEfficiency, setEnergyEfficiency] = useState(null);
   const [energyConsumed, setEnergyConsumed] = useState(null);
+  const [pump, setPump] = useState(false);
+  const [pumprate, setPumprate] = useState(null);
+  const [inletflow, setInletflow] = useState(null);
+  const [inlettds, setInlettds] = useState(null);
+  const [outletflow, setOutletflow] = useState(null);
+  const [outlettds, setOutlettds] = useState(null);
+  const [rejectflow, setRejectflow] = useState(null);
+  const [rejecttds, setRejecttds] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,13 +43,21 @@ export default function Dashboard() {
 
         const data = await res.json();
 
-        setEfficiency(parseFloat(data['Test Device A1']?.outputEfficiency?.[0]?.value || 0));
-        setEnergyEfficiency(parseFloat(data['Test Device A1']?.energyEfficiency?.[0]?.value || 0));
-        setEnergyConsumed(parseFloat(data['Test Device A1']?.energyConsumed?.[0]?.value || 0));
+        setEfficiency(parseFloat(data['Efficiency Device']?.outputEfficiency?.[0]?.value || 0));
+        setEnergyEfficiency(parseFloat(data['Efficiency Device']?.energyEfficiency?.[0]?.value || 0));
+        setEnergyConsumed(parseFloat(data['Efficiency Device']?.energyConsumed?.[0]?.value || 0));
+        setPump(data['Pump Device']?.pumpStatus?.[0]?.value || 0);
+        setPumprate(parseFloat(data['Pump Device']?.runTime?.[0]?.value || 0));
+        setInletflow(parseFloat(data['Water properties Device']?.inletFlowRate?.[0]?.value || 0));
+        setInlettds(parseFloat(data['Water properties Device']?.inletTds?.[0]?.value || 0));
+        setOutletflow(parseFloat(data['Water properties Device']?.outletFlowRate?.[0]?.value || 0));
+        setOutlettds(parseFloat(data['Water properties Device']?.outletTds?.[0]?.value || 0));
+        setRejectflow(parseFloat(data['Water properties Device']?.rejectFlowRate?.[0]?.value || 0));
+        setRejecttds(parseFloat(data['Water properties Device']?.rejectTds?.[0]?.value || 0));
       } catch (err) {
         console.error("Telemetry fetch failed", err);
       } finally {
-        setLoading(false); // hide spinner
+        setLoading(false);
       }
     };
 
@@ -127,7 +143,9 @@ export default function Dashboard() {
         {/* Middle Section */}
         <div className="px-4 mt-2 flex flex-col lg:flex-row gap-3">
           <div className="w-full lg:w-3/4 flex flex-col gap-2">
-            <WaterProperty />
+            <WaterProperty 
+            pumprate={pumprate} pump={pump} inletflow={inletflow} inlettds={inlettds} outletflow={outletflow} outlettds={outlettds} rejectflow={rejectflow} rejecttds={rejecttds}
+            />
             <img src="/Raw Water.png" alt="mimic" className="rounded-md shadow-md w-full max-h-[315px] object-cover" />
           </div>
 

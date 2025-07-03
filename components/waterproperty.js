@@ -1,6 +1,6 @@
 import React from 'react'
 
-const WaterProperty = () => {
+const WaterProperty = ({pumprate,pump,inletflow,inltettds,outletflow,outlettds,rejectflow,rejecttds}) => {
     return (
         <div className="flex flex-wrap justify-between gap-2 bg-white">
             {/* Operator Info */}
@@ -21,11 +21,11 @@ const WaterProperty = () => {
                 <p className="text-lg font-medium">Inlet Properties</p>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">Flow Rate</p>
-                    <span>1200 L/hr</span>
+                    <span>{inletflow} L/hr</span>
                 </div>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">TDS</p>
-                    <span>750 ppm</span>
+                    <span>{inltettds} ppm</span>
                 </div>
             </div>
 
@@ -34,11 +34,11 @@ const WaterProperty = () => {
                 <p className="text-lg font-medium">Reject Properties</p>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">Flow Rate</p>
-                    <span>50 L/hr</span>
+                    <span>{rejectflow} L/hr</span>
                 </div>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">TDS</p>
-                    <span>600 ppm</span>
+                    <span>{rejecttds} ppm</span>
                 </div>
             </div>
 
@@ -47,11 +47,11 @@ const WaterProperty = () => {
                 <p className="text-lg font-medium">Outlet Properties</p>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">Flow Rate</p>
-                    <span>1150 L/hr</span>
+                    <span>{outletflow} L/hr</span>
                 </div>
                 <div className="flex py-1 justify-between items-center">
                     <p className="text-sm font-medium">TDS</p>
-                    <span>50 ppm</span>
+                    <span>{outlettds} ppm</span>
                 </div>
             </div>
 
@@ -61,11 +61,11 @@ const WaterProperty = () => {
                 <p className="text-sm font-medium">Pump #1</p>
                 <div className="flex py-1 justify-between">
                     <span className="text-sm text-gray-600">Status</span>
-                    <span className="text-sm font-medium text-green-600">Running</span>
+                    <span className="text-sm font-medium text-green-600">{pump?'Running':'Stopped'}</span>
                 </div>
                 <div className="flex py-1 justify-between">
                     <span className="text-sm text-gray-600">Run Time</span>
-                    <span className="text-sm font-medium">6 hr</span>
+                    <span className="text-sm font-medium">{pumprate} hr</span>
                 </div>
             </div>
         </div>
