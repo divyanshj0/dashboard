@@ -1,54 +1,40 @@
 import { NextResponse } from 'next/server';
-
 const TB_URL = 'https://demo.thingsboard.io';
 
 export async function POST(req) {
-  const { token, devices: devicesRaw } = await req.json();
+  const { token, devices } = await req.json();
 
-  let devices;
-  try {
-    devices = typeof devicesRaw === 'string' ? JSON.parse(devicesRaw) : devicesRaw;
-  } catch (e) {
-    return NextResponse.json({ error: 'Invalid devices format' }, { status: 400 });
-  }
+  const userRes = await fetch(`${TB_URL}/api/auth/user`, {
+    headers: { 'X-Authorization': `Bearer ${token}` }
+  });
+  const user = await userRes.json();
+  const userId = user.id.id;
 
-  try {
-    const results = {};
-
-   for (const device of devices) {
-  const deviceId = device.id.id;
-  const deviceName = device.name;
-
-  // Step 1: Get server attributes to find telemetry keys
-  const attrRes = await fetch(`${TB_URL}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`, {
+  // Fetch dashboardConfig attribute
+  const attrRes = await fetch(`${TB_URL}/api/plugins/telemetry/USER/${userId}/values/attributes/SERVER_SCOPE`, {
     headers: { 'X-Authorization': `Bearer ${token}` },
   });
+  const attr = await attrRes.json();
+  let config = {};
+  const cfgItem = attr.find(a => a.key === 'dashboardConfig');
+  if (cfgItem) {
+    config = typeof cfgItem.value === 'string'
+      ? JSON.parse(cfgItem.value)
+      : cfgItem.value;
+  }
+  const results = {};
 
-  const attrData = await attrRes.json();
-  const telemetryKeysEntry = attrData.find(attr => attr.key === 'telemetryKeys');
-
-  if (!telemetryKeysEntry || !Array.isArray(telemetryKeysEntry.value?.telemetryKeys)) {
-    console.warn(`No valid telemetryKeys attribute found for device ${deviceName}`);
-    continue;
+  for (const sec of Object.keys(config)) {
+    results[sec] = {};
+    for (const item of config[sec]) {
+      const res = await fetch(`${TB_URL}/api/plugins/telemetry/DEVICE/${item.deviceId}/values/timeseries?keys=${item.key}`, {
+        headers: { 'X-Authorization': `Bearer ${token}` }
+      });
+      const j = await res.json();
+      results[sec][item.key] = j[item.key] || [];
+    }
   }
 
-  const telemetryKeys = telemetryKeysEntry.value.telemetryKeys;
-
-  // Step 2: Fetch telemetry for these keys
-  const telemetryRes = await fetch(`${TB_URL}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=${telemetryKeys.join(',')}`, {
-    headers: { 'X-Authorization': `Bearer ${token}` },
-  });
-
-  if (!telemetryRes.ok) {
-    throw new Error(`Failed to fetch telemetry from ${deviceName}`);
-  }
-
-  const telemetry = await telemetryRes.json();
-  results[deviceName] = telemetry;
+  return NextResponse.json({ telemetry: results, config });
 }
-    return NextResponse.json(results);
-  } catch (err) {
-    console.error('Telemetry fetch error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+

@@ -28,6 +28,7 @@ export default function LoginPage() {
 
       // Store token in localStorage/sessionStorage/cookie as needed
       localStorage.setItem('tb_token', data.token)
+      localStorage.setItem('tb_userId', data.userId)
       localStorage.setItem('tb_customerId', data.customerId)
       localStorage.setItem('tb_devices', JSON.stringify(data.devices))
       localStorage.setItem('userName',data.userName)

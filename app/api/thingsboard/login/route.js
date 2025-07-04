@@ -27,6 +27,7 @@ export async function POST(req) {
 
     const user = await userRes.json()
     const customerId = user.customerId.id
+    const userId=user.id.id
     const userName=user.firstName +" "+user.lastName
 
     // ✅ Use the user's own token to fetch customer devices
@@ -43,6 +44,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       token,
+      userId,
       customerId,
       devices,
       userName

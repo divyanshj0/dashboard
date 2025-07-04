@@ -66,6 +66,7 @@ const WaterProperty = ({pumprate,pump,inletflow,inltettds,outletflow,outlettds,r
                 <div className="flex py-1 justify-between">
                     <span className="text-sm text-gray-600">Run Time</span>
                     <span className="text-sm font-medium">{pumprate} hr</span>
+                    
                 </div>
             </div>
         </div>
