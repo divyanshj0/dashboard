@@ -1,107 +1,205 @@
 'use client';
-import { useState } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FiUser, FiLogOut, FiEdit2 } from 'react-icons/fi';
+import clsx from 'clsx';
 
-import WidgetEditorModal from '@/components/WidgetEditorModal';
-import WaterProperty from '@/components/waterproperty';
-import Efficiency from '@/components/efficiencydonut';
-import EnergyEfficiency from '@/components/energyefficiency';
-import ChemicalDosage from '@/components/chemicalDosage';
-import TreatedWaterChart from '@/components/treatedwatergraph';
-import FlowRaterChart from '@/components/flowratechart';
-import ChemicalChart from '@/components/chemicalchart';
+import CreateDashboardModal from '@/components/CreateDashboardModal';
+import WidgetPlacementModal from '@/components/WidgetPlacementModal';
+import WidgetRenderer from '@/components/WidgetRenderer';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+export default function Dashboard() {
+  const router = useRouter();
+  const [telemetry, setTelemetry] = useState({});
+  const [config, setConfig] = useState(null);
+  const [layout, setLayout] = useState([]);
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [createdWidgets, setCreatedWidgets] = useState([]);
 
-// 📦 Initial static layout config (will become editable)
-const initialWidgets = [
-    { i: 'water', type: 'WaterProperty', x: 0, y: 0, w: 6, h: 4 },
-    { i: 'efficiency', type: 'Efficiency', x: 6, y: 0, w: 3, h: 2, value: 85 },
-    { i: 'energy', type: 'EnergyEfficiency', x: 9, y: 0, w: 3, h: 2, value: 78 },
-    { i: 'chemicalBox', type: 'ChemicalDosage', x: 6, y: 2, w: 6, h: 2, view: 'daily' },
-    { i: 'treated', type: 'TreatedWaterChart', x: 0, y: 4, w: 4, h: 3, view: 'daily' },
-    { i: 'flowrate', type: 'FlowRaterChart', x: 4, y: 4, w: 4, h: 3, view: 'daily' },
-    { i: 'chemchart', type: 'ChemicalChart', x: 8, y: 4, w: 4, h: 3, view: 'daily' },
-];
+  useEffect(() => {
+    const fetchTelemetry = async () => {
+      const token = localStorage.getItem('tb_token');
+      const devices = JSON.parse(localStorage.getItem('tb_devices'));
+      const userId = localStorage.getItem('tb_userId');
 
-export default function DashboardGrid() {
-    const [widgets, setWidgets] = useState(initialWidgets);
-    const [showEditor, setShowEditor] = useState(false);
+      if (!token) {
+        router.push('/');
+        return;
+      }
 
-    const renderWidget = (widget) => {
-        switch (widget.type) {
-            case 'WaterProperty':
-                return (
-                    <WaterProperty
-                        inletflow={120}
-                        inlettds={500}
-                        outletflow={100}
-                        outlettds={30}
-                        rejectflow={20}
-                        rejecttds={1500}
-                        pumprate={40}
-                        pump={1}
-                    />
-                );
-            case 'Efficiency':
-                return <Efficiency value={widget.value || 0} />;
-            case 'EnergyEfficiency':
-                return <EnergyEfficiency value={widget.value || 0} />;
-            case 'ChemicalDosage':
-                return <ChemicalDosage view={widget.view} />;
-            case 'TreatedWaterChart':
-                return <TreatedWaterChart view={widget.view} />;
-            case 'FlowRaterChart':
-                return <FlowRaterChart view={widget.view} />;
-            case 'ChemicalChart':
-                return <ChemicalChart view={widget.view} />;
-            default:
-                return <div className="p-4 text-gray-500">Unknown Widget</div>;
-        }
+      try {
+        const res = await fetch('/api/thingsboard/telemetry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, devices, userId }),
+        });
+
+        const result = await res.json();
+        setTelemetry(result.telemetry || {});
+        setConfig(result.config || null);
+        setLayout(result.layout || []);
+      } catch (err) {
+        console.error('Telemetry/config fetch failed', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    return (
-        <div className="p-4 pt-0 bg-gray-100 min-h-screen">
-            {/* Header */}
-            <div className="bg-blue-100 shadow-md flex flex-col md:flex-row mx-4 p-4 justify-between items-start md:items-center rounded-md gap-2">
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                    <img src="/company_logo[1].png" alt="logo" className="w-48" />
-                    <p className="text-2xl md:text-3xl font-semibold">Water Monitoring Dashboard</p>
-                    <div className="flex gap-2 items-center">
-                        <p className="text-lg font-medium">Last Updated</p>
-                        <span>4 July 17:05:07</span>
-                    </div>
-                </div>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700" onClick={() => setShowEditor(true)}>
-                    Customize Layout
-                </button>
+    fetchTelemetry();
+    const user = localStorage.getItem('userName');
+    if (user) setName(user);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push('/');
+  };
+
+  const handleSaveLayout = async (newLayout) => {
+    const token = localStorage.getItem('tb_token');
+    const userId = localStorage.getItem('tb_userId');
+
+    const updatedConfig = {
+      ...config,
+      layout: newLayout,
+    };
+
+    try {
+      const res = await fetch('/api/thingsboard/saveDashboardConfig', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          userId,
+          config: updatedConfig,
+        }),
+      });
+
+      if (res.ok) {
+        setConfig(updatedConfig);
+        setLayout(newLayout);
+      } else {
+        console.error('Failed to save layout config');
+      }
+    } catch (err) {
+      console.error('Layout save error:', err);
+    }
+  };
+
+  const dotClass = clsx('h-3 w-3 rounded-full', 'bg-green-500');
+  const textClass = clsx('text-lg font-medium', 'text-green-500');
+
+  return (
+    <>
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white bg-opacity-80">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4" />
+          <p className="text-blue-700 font-medium">Loading dashboard...</p>
+        </div>
+      )}
+
+      <main className={clsx('min-h-screen w-full bg-gray-100', { 'opacity-50 pointer-events-none': loading })}>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row mx-4 p-2 justify-between items-start md:items-center bg-blue-100 rounded-md gap-2">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <img src="/company_logo[1].png" alt="logo" className="w-48" />
+            <p className="text-2xl md:text-3xl font-semibold">Water Monitoring Dashboard</p>
+            <div className="flex gap-2 items-center">
+              <p className="text-lg font-medium">Last Updated</p>
+              <span>10 July 2025</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={dotClass} />
+            <p className={textClass}>Normal</p>
+          </div>
+          <div className="relative inline-block text-left">
+            <div
+              className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
+              onClick={() => setShowMenu((prev) => !prev)}
+            >
+              <FiUser size={24} className="mr-2" /> {name}
             </div>
 
-            {/* Dynamic Grid */}
-            <ResponsiveGridLayout
-                className="layout mt-4"
-                layouts={{ lg: widgets.map(({ i, x, y, w, h }) => ({ i, x, y, w, h })) }}
-                breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-                cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
-                rowHeight={100}
-                isDraggable={true}
-                isResizable={true}
-            >
-                {widgets.map((widget) => (
-                    <div key={widget.i} className="bg-white p-2 rounded shadow">
-                        {renderWidget(widget)}
-                    </div>
-                ))}
-            </ResponsiveGridLayout>
-            {showEditor && (
-                <WidgetEditorModal
-                    widgets={widgets}
-                    setWidgets={setWidgets}
-                    onClose={() => setShowEditor(false)}
-                />
+            {showMenu && (
+              <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="py-1">
+                  <button
+                    className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 w-full"
+                    onClick={() => {
+                      setShowCreateModal(true);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <FiEdit2 size={20} className="mr-2" /> Customize
+                  </button>
+                  <button
+                    className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    onClick={handleLogout}
+                  >
+                    <FiLogOut size={20} className="mr-2" /> Logout
+                  </button>
+                </div>
+              </div>
             )}
+          </div>
         </div>
-    );
+
+        {/* Main Content */}
+        {!config ? (
+          <div className="h-[75vh] flex items-center justify-center">
+            <button
+              className="bg-blue-600 text-white text-lg px-6 py-3 rounded hover:bg-blue-700"
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Dashboard
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 px-4 min-h-[72vh]">
+            <WidgetRenderer config={config} telemetry={telemetry} layout={layout} onLayoutSave={handleSaveLayout} />
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="bg-blue-100 text-center mx-4 mt-6 py-4 rounded-md">
+          <p className="text-lg text-black">© 2025 All rights reserved. Developed and managed by TheElitePro</p>
+        </div>
+      </main>
+
+      {/* Modals */}
+      {showCreateModal && (
+        <CreateDashboardModal
+          open={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          existingWidgets={config?.widgets || []}  // Pass saved widgets
+          onNext={(widgets) => {
+            setCreatedWidgets(widgets);
+            setShowCreateModal(false);
+            setShowPlacementModal(true);
+          }}
+        />
+      )}
+
+
+      {showPlacementModal && (
+        <WidgetPlacementModal
+          widgets={createdWidgets}
+          onSave={(finalWidgets) => {
+            const updatedConfig = {
+              widgets: finalWidgets,
+              layout: finalWidgets.map(w => w.layout),
+            };
+            setConfig(updatedConfig);
+            setLayout(updatedConfig.layout);
+            setShowPlacementModal(false);
+          }}
+          onCancel={() => setShowPlacementModal(false)}
+        />
+      )}
+    </>
+  );
 }
