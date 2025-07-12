@@ -108,19 +108,20 @@ export default function Dashboard() {
       <main className={clsx('min-h-screen w-full bg-gray-100', { 'opacity-50 pointer-events-none': loading })}>
         {/* Responsive Header */}
         <div className="flex justify-between items-center px-4 py-2 bg-blue-100 rounded-md shadow-md mx-4 mt-2">
-          <div className="flex items-center gap-2">
-            <img src="/company_logo[1].png" alt="logo" className="w-32 md:w-48" />
-            <p className="text-xl md:text-3xl font-semibold">Water Monitoring Dashboard</p>
+          <div className="flex flex-col md:flex-row md:gap-2">
+            <img src="/company_logo[1].png" alt="logo" className=" w-48" />
+            <span className="text-xl md:text-2xl font-semibold">Water Monitoring Dashboard</span>
+            <div className="hidden md:flex gap-2 items-center">
+              <p className="text-md font-medium">Last Updated</p>
+              <span>{lastUpdated}</span>
+            </div>
           </div>
           {/* Desktop Options */}
           <div className="hidden md:flex items-center gap-6">
+            
             <div className="flex items-center gap-2">
               <span className={dotClass} />
               <p className={textClass}>{status}</p>
-            </div>
-            <div className="flex gap-2 items-center">
-              <p className="text-lg font-medium">Last Updated</p>
-              <span>{lastUpdated}</span>
             </div>
             <div className="relative inline-block text-left">
               <div
@@ -161,19 +162,19 @@ export default function Dashboard() {
 
         {/* Mobile Sidebar */}
         {showSidebar && (
-          <div className="fixed left-[33%] inset-0 z-50 bg-black bg-opacity-40 flex">
-            <div className="w-64 bg-white p-4 flex flex-col gap-4">
+          <div className="fixed left-[33%] inset-0 z-50 bg-black bg-opacity-40 rounded-sm flex">
+            <div className="w-full bg-lime-100 p-4 flex flex-col gap-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">Menu</h2>
                 <button onClick={() => setShowSidebar(false)}>
                   <FiX size={24} />
                 </button>
               </div>
-              <div className="flex  gap-2">
+              <div className="flex gap-5 items-center">
                 <p className='text-lg font-medium'>Profile</p>
-                <p className="text-gray-700 font-medium mb-1">{name}</p>
+                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {name}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-5">
                 <p className='text-lg font-medium'>Status</p>
                 <div className='flex items-center gap-2'>
                   <span className={dotClass} />
@@ -258,7 +259,7 @@ export default function Dashboard() {
             setLayout(updatedConfig.layout);
             setShowPlacementModal(false);
           }}
-          onCancel={() => setShowPlacementModal(false)}
+          onClose={() => setShowPlacementModal(false)}
         />
       )}
     </>

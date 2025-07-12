@@ -80,15 +80,15 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-20 z-50">
       <div className="bg-white w-full max-w-4xl max-h-[90vh] p-6 rounded shadow overflow-auto">
         <h2 className="text-xl font-bold mb-4">Configure Widgets</h2>
-        {widgets.map((w, i) => (
-          <div key={w.id} className="border p-3 rounded mb-4">
-            <div className="flex justify-between items-center mb-2">
+        {widgets.map((w, i) => (  
+          <div key={w.id} className="border p-3 rounded mb-4 bg-gray-200">
+            <div className="grid grid-cols-2 gap-2 md:flex justify-between items-center">
               <input
                 type="text"
                 placeholder="Widget Name"
                 value={w.name}
                 onChange={e => update(i, 'name', e.target.value)}
-                className="border p-1 rounded flex-1"
+                className="border p-1 rounded flex-1 md:w-2/3"
               />
               <select
                 value={w.type}
@@ -101,14 +101,12 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                 <option value="pie">Pie Chart</option>
                 {/* other types */}
               </select>
-              <button onClick={() => removeWidget(i)} className="text-red-600 ml-2">
-                <FiTrash2 /> Remove Widget
-              </button>
+
             </div>
-            <div>
+            <div className='mt-4'>
               <h4 className="font-medium mb-1">Parameters:</h4>
               {w.parameters.map((p, pi) => (
-                <div key={pi} className="grid grid-cols-5 gap-2 mb-1">
+                <div key={pi} className="grid grid-cols-5 gap-2 mb-3">
                   <select
                     value={p.deviceId}
                     onChange={e => updateParam(i, pi, 'deviceId', e.target.value)}
@@ -143,20 +141,25 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     className="border p-1 rounded"
                   />
                   <button onClick={() => removeParam(i, pi)} className="text-red-500">
-                    <FiTrash2 />
+                    <FiTrash2 size={20}/>
                   </button>
                 </div>
               ))}
-              <button onClick={() => addParam(i)} className="text-blue-600 mt-1">
-                <FiPlus /> Add Parameter
-              </button>
+              <div className='flex justify-between items-center mt-4'>
+                <button onClick={() => addParam(i)} className="text-blue-600 mt-1 flex items-center">
+                  <FiPlus className='mr-1'size={20} /> Add Parameter
+                </button>
+                <button onClick={() => removeWidget(i)} className="text-red-600 ml-2 flex items-center">
+                  <FiTrash2 className='mr-1'size={20} /> Remove Widget
+                </button>
+              </div>
             </div>
           </div>
         ))}
 
         <div className="flex justify-between mt-4">
-          <button onClick={addWidget} className="text-blue-600">
-            <FiPlus /> Add Widget
+          <button onClick={addWidget} className="text-blue-600 flex items-center">
+            <FiPlus className='mr-1'size={20} /> Add Widget
           </button>
           <div>
             <button onClick={onClose} className="px-3 py-1 bg-gray-300 rounded mr-2">Cancel</button>
