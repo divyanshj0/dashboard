@@ -1,17 +1,22 @@
 'use client';
-
 import { useEffect, useState } from 'react';
+import clsx from 'clsx';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [] }) {
-  const [widgets, setWidgets] = useState([]);
   const [devices, setDevices] = useState([]);
-  // Load existing widgets when modal opens
+  const [widgets, setWidgets] = useState([]);
+
+  useEffect(() => {
+    if (open) {
+      setWidgets(existingWidgets.map(w => ({ ...w })));
+    }
+  }, [open, existingWidgets]);
+
   useEffect(() => {
     const tbDevices = JSON.parse(localStorage.getItem('tb_devices') || '[]');
     const token = localStorage.getItem('tb_token');
-
     Promise.all(
       tbDevices.map(dev =>
         fetch(`https://demo.thingsboard.io/api/plugins/telemetry/DEVICE/${dev.id.id}/values/attributes?keys=telemetryKeys`, {
@@ -23,37 +28,47 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         })
       )
     ).then(setDevices).catch(console.error);
-    if (open) {
-      // Deep copy to prevent modifying original props
-      const copied = existingWidgets.map(w => ({ ...w }));
-      setWidgets(copied);
-    }
-  }, [open, existingWidgets]);
-
-  const updateWidget = (index, field, value) => {
-    const updated = [...widgets];
-    updated[index][field] = value;
-    setWidgets(updated);
-  };
+  }, []);
 
   const addWidget = () => {
-    setWidgets([
-      ...widgets,
-      {
-        id: uuidv4(),
-        name: '',
-        deviceId: '',
-        key: '',
-        unit: '',
-        type: 'linechart',
-      },
-    ]);
+    setWidgets(w => [...w, {
+      id: uuidv4(),
+      name: '',
+      type: 'bargraph',
+      parameters: []
+    }]);
   };
 
-  const removeWidget = (index) => {
-    const updated = [...widgets];
-    updated.splice(index, 1);
-    setWidgets(updated);
+  const removeWidget = i => {
+    setWidgets(w => w.filter((_, idx) => idx !== i));
+  };
+
+  const update = (i, field, val) => {
+    setWidgets(w => w.map((x, idx) => idx === i ? { ...x, [field]: val } : x));
+  };
+
+  const addParam = widgetIdx => {
+    const newParam = { deviceId: '', key: '', label: '', unit: '' };
+    setWidgets(w => w.map((x, idx) => idx === widgetIdx
+      ? { ...x, parameters: [...(x.parameters || []), newParam] }
+      : x
+    ));
+  };
+
+  const updateParam = (wIdx, pIdx, field, val) => {
+    setWidgets(w => w.map((x, idx) => {
+      if (idx !== wIdx) return x;
+      const params = x.parameters.map((p, pi) => pi === pIdx ? { ...p, [field]: val } : p);
+      return { ...x, parameters: params };
+    }));
+  };
+
+  const removeParam = (wIdx, pIdx) => {
+    setWidgets(w => w.map((x, idx) => {
+      if (idx !== wIdx) return x;
+      const params = x.parameters.filter((_, pi) => pi !== pIdx);
+      return { ...x, parameters: params };
+    }));
   };
 
   const handleNext = () => {
@@ -61,91 +76,95 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   };
 
   if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-md shadow-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto relative">
-        <h2 className="text-xl font-semibold mb-4">Configure Dashboard Widgets</h2>
-
-        <div className="grid grid-cols-1 gap-4">
-          {widgets.map((wd, i) => (
-          <div key={wd.id || i} className="grid grid-cols-6 gap-2 items-center mb-2">
-            <input
-              className="col-span-2 p-2 border rounded"
-              placeholder="Name"
-              value={wd.name}
-              onChange={e => updateWidget(i, 'name', e.target.value)}
-            />
-            <select
-              className="col-span-1 p-2 border rounded"
-              value={wd.deviceId}
-              onChange={e => updateWidget(i, 'deviceId', e.target.value)}
-            >
-              <option value="">Device</option>
-              {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <select
-              className="col-span-1 p-2 border rounded"
-              value={wd.key}
-              onChange={e => updateWidget(i, 'key', e.target.value)}
-              disabled={!wd.deviceId}
-            >
-              <option value="">Telemetry</option>
-              {devices.find(d => d.id === wd.deviceId)?.keys.map(k => (
-                <option key={k} value={k}>{k}</option>
-              )) || []}
-            </select>
-            <input
-              className="col-span-1 p-2 border rounded"
-              placeholder="Unit"
-              value={wd.unit}
-              onChange={e => updateWidget(i, 'unit', e.target.value)}
-            />
-            <select
-              className="col-span-1 p-2 border rounded"
-              value={wd.type}
-              onChange={e => updateWidget(i, 'type', e.target.value)}
-            >
-              <option value="line">Line</option>
-              <option value="bar">Bar</option>
-              <option value="pie">Pie</option>
-              <option value="donut">Donut</option>
-              <option value="table">Table</option>
-            </select>
-              <button
-                onClick={() => removeWidget(i)}
-                className="col-span-1 text-red-600 flex gap-1 items-center"
+    <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-20 z-50">
+      <div className="bg-white w-full max-w-4xl max-h-[90vh] p-6 rounded shadow overflow-auto">
+        <h2 className="text-xl font-bold mb-4">Configure Widgets</h2>
+        {widgets.map((w, i) => (
+          <div key={w.id} className="border p-3 rounded mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <input
+                type="text"
+                placeholder="Widget Name"
+                value={w.name}
+                onChange={e => update(i, 'name', e.target.value)}
+                className="border p-1 rounded flex-1"
+              />
+              <select
+                value={w.type}
+                onChange={e => update(i, 'type', e.target.value)}
+                className="border p-1 ml-2 rounded"
               >
-                <FiTrash2 /> Remove
+                <option value="bar">Bar Graph</option>
+                <option value="line">Line Chart</option>
+                <option value="donut">Donut</option>
+                <option value="pie">Pie Chart</option>
+                {/* other types */}
+              </select>
+              <button onClick={() => removeWidget(i)} className="text-red-600 ml-2">
+                <FiTrash2 /> Remove Widget
               </button>
             </div>
-          ))}
-        </div>
+            <div>
+              <h4 className="font-medium mb-1">Parameters:</h4>
+              {w.parameters.map((p, pi) => (
+                <div key={pi} className="grid grid-cols-5 gap-2 mb-1">
+                  <select
+                    value={p.deviceId}
+                    onChange={e => updateParam(i, pi, 'deviceId', e.target.value)}
+                    className="border p-1 rounded"
+                  >
+                    <option value="">Device</option>
+                    {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  <select
+                    value={p.key}
+                    onChange={e => updateParam(i, pi, 'key', e.target.value)}
+                    className="border p-1 rounded"
+                    disabled={!p.deviceId}
+                  >
+                    <option value="">Key</option>
+                    {devices.find(d => d.id === p.deviceId)?.keys.map(k => (
+                      <option key={k} value={k}>{k}</option>
+                    )) || []}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Label"
+                    value={p.label}
+                    onChange={e => updateParam(i, pi, 'label', e.target.value)}
+                    className="border p-1 rounded"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Unit"
+                    value={p.unit}
+                    onChange={e => updateParam(i, pi, 'unit', e.target.value)}
+                    className="border p-1 rounded"
+                  />
+                  <button onClick={() => removeParam(i, pi)} className="text-red-500">
+                    <FiTrash2 />
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => addParam(i)} className="text-blue-600 mt-1">
+                <FiPlus /> Add Parameter
+              </button>
+            </div>
+          </div>
+        ))}
 
-        <div className="flex justify-between items-center mt-4">
-          <button
-            onClick={addWidget}
-            className="flex items-center gap-2 text-blue-600"
-          >
+        <div className="flex justify-between mt-4">
+          <button onClick={addWidget} className="text-blue-600">
             <FiPlus /> Add Widget
           </button>
-
-          <div className="flex gap-3">
-            <button
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-              onClick={handleNext}
-            >
-              Next
-            </button>
+          <div>
+            <button onClick={onClose} className="px-3 py-1 bg-gray-300 rounded mr-2">Cancel</button>
+            <button onClick={handleNext} className="px-3 py-1 bg-blue-600 text-white rounded">Next</button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

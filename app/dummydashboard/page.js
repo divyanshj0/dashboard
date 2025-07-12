@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiLogOut, FiEdit2 } from 'react-icons/fi';
 import clsx from 'clsx';
-
+import { BsDatabaseUp } from "react-icons/bs";
 import CreateDashboardModal from '@/components/CreateDashboardModal';
 import WidgetPlacementModal from '@/components/WidgetPlacementModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function Dashboard() {
             <span className={dotClass} />
             <p className={textClass}>Normal</p>
           </div>
-          <div className="relative inline-block text-left">
+          <div className="relative inline-block text-left md:mr-10">
             <div
               className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
               onClick={() => setShowMenu((prev) => !prev)}
@@ -125,10 +126,10 @@ export default function Dashboard() {
             </div>
 
             {showMenu && (
-              <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+              <div className="absolute left-[-28px] min-w-fit mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                 <div className="py-1">
                   <button
-                    className="flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 w-full"
+                    className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100"
                     onClick={() => {
                       setShowCreateModal(true);
                       setShowMenu(false);
@@ -136,8 +137,9 @@ export default function Dashboard() {
                   >
                     <FiEdit2 size={20} className="mr-2" /> Customize
                   </button>
+                  <Link href="/dataupdate" className="px-4 py-2 text-blue-600 text-lg flex justify-center"><BsDatabaseUp size={20} className="mr-2" />DataUpdate</Link>
                   <button
-                    className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    className="flex items-center  px-4 py-2 text-lg text-red-600 hover:bg-gray-100"
                     onClick={handleLogout}
                   >
                     <FiLogOut size={20} className="mr-2" /> Logout

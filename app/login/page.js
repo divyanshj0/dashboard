@@ -69,7 +69,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-blue-50">
       <img src="/company_logo[1].png" alt="logo" className='h-24' />
-      <h1 className="text-3xl font-bold text-blue-700 mt-4">Water Monitoring Dashboard Login</h1>
+      <h1 className="text-3xl font-bold text-blue-700 mt-4 text-center">Water Monitoring Dashboard Login</h1>
       {!newPassword ?
         <form onSubmit={handleLogin} className="flex flex-col gap-4 mt-10">
           <input name="email" type="email" placeholder="Email" required className="border p-2 rounded" />
