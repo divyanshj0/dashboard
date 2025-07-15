@@ -107,8 +107,8 @@ export default function Dashboard() {
 
       <main className={clsx('min-h-screen w-full bg-gray-100', { 'opacity-50 pointer-events-none': loading })}>
         {/* Responsive Header */}
-        <div className="flex justify-between items-center px-4 py-2 bg-blue-100 rounded-md shadow-md mx-4 mt-2">
-          <div className="flex flex-col md:flex-row md:gap-2">
+        <div className="flex justify-between items-center px-4 py-2 bg-blue-100 rounded-md shadow-md mx-4">
+          <div className="flex flex-col items-start md:items-center md:flex-row md:gap-2">
             <img src="/company_logo[1].png" alt="logo" className=" w-48" />
             <span className="text-xl md:text-2xl font-semibold">Water Monitoring Dashboard</span>
             <div className="hidden md:flex gap-2 items-center">

@@ -29,25 +29,13 @@ export async function POST(req) {
     const customerId = user.customerId.id
     const userId=user.id.id
     const userName=user.firstName +" "+user.lastName
-
-    // ✅ Use the user's own token to fetch customer devices
-    const devicesRes = await fetch(`${TB_URL}/api/customer/${customerId}/devices?pageSize=100&page=0`, {
-      headers: { 'X-Authorization': `Bearer ${token}` },
-    })
-
-    if (!devicesRes.ok) {
-      const text = await devicesRes.text()
-      return NextResponse.json({ error: 'Failed to fetch devices: ' + text }, { status: 400 })
-    }
-
-    const { data: devices } = await devicesRes.json()
-
+    const userAuthority = user.authority
     return NextResponse.json({
       token,
       userId,
       customerId,
-      devices,
-      userName
+      userName,
+      userAuthority
     })
   } catch (err) {
     console.error('Login error:', err)

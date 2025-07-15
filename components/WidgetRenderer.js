@@ -31,7 +31,7 @@ export default function WidgetRenderer({ config, telemetry, layout, onLayoutSave
 
   return (
     <ResponsiveGridLayout
-      className="layout"
+      className="layout overflow-visible"
       layouts={{ lg: layout }}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
       cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
@@ -53,7 +53,7 @@ export default function WidgetRenderer({ config, telemetry, layout, onLayoutSave
         }));
 
         return (
-          <div key={key} className="bg-white p-2 rounded shadow">
+          <div key={key} className="bg-white p-2 z-[1] rounded shadow drag-handle">
             {(() => {
               switch (w.type) {
                 case 'donut':

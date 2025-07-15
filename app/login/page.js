@@ -30,9 +30,23 @@ export default function LoginPage() {
       localStorage.setItem('tb_token', data.token)
       localStorage.setItem('tb_userId', data.userId)
       localStorage.setItem('tb_customerId', data.customerId)
-      localStorage.setItem('tb_devices', JSON.stringify(data.devices))
-      localStorage.setItem('userName',data.userName)
-      router.push('/dashboard')
+      localStorage.setItem('userName', data.userName)
+      localStorage.setItem('userAuthority', data.userAuthority)
+
+
+      if (data.userAuthority === 'TENANT_ADMIN') {
+        router.push('/admindashboard')
+      } 
+      else if (data.userAuthority === 'CUSTOMER_USER') {
+        const res = await fetch('/api/thingsboard/devices', {
+          method: 'POST',
+          body: JSON.stringify({ customerId: data.customerId, token: data.token }),
+        })
+        const devdata = await res.json()
+        if (!res.ok) throw new Error(devdata.error)
+        localStorage.setItem('tb_devices', JSON.stringify(devdata.devices))
+        router.push('/dashboard')
+      }
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {
@@ -60,7 +74,7 @@ export default function LoginPage() {
     } catch (err) {
       setError(err.message || 'Something went wrong')
     }
-    finally{
+    finally {
       setNewPassword(false)
     }
   }

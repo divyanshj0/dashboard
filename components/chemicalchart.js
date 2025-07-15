@@ -41,7 +41,7 @@ export default function ChemicalChart({ title = "", series = [] }) {
 
   return (
     <div className="bg-white h-full w-full rounded-md shadow-md">
-      <div className="flex items-center justify-between px-2 pt-1">
+      <div className="flex items-center gap-15 px-2 pt-1">
         <p className="text-lg font-medium">{title}</p>
         <button onClick={() => setIsOpen(true)} title="fullscreen">
           <FiMaximize />
@@ -53,7 +53,7 @@ export default function ChemicalChart({ title = "", series = [] }) {
           <div className="bg-white p-4 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto shadow-lg">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">{title}</h2>
-              <button onClick={() => setIsOpen(false)} className="text-lg">✕</button>
+              <button onClick={() => setIsOpen(false)} className="text-lg bg-red-600">✕</button>
             </div>
             <Chart data={chartData} fullView={true} />
           </div>
