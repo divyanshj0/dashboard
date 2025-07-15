@@ -4,14 +4,12 @@ import { useRouter } from 'next/navigation'
 import { BiSolidHide, BiShow } from "react-icons/bi";
 export default function LoginPage() {
   const router = useRouter()
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [newPassword, setNewPassword] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
 
     const email = e.target.email.value.trim()
@@ -48,14 +46,13 @@ export default function LoginPage() {
         router.push('/dashboard')
       }
     } catch (err) {
-      setError(err.message || 'Login failed')
+      alert(err.message || 'Login failed')
     } finally {
       setLoading(false)
     }
   }
   const handleForgotPass = async (e) => {
     e.preventDefault()
-    setError('')
     const email = e.target.email.value.trim()
 
     try {
@@ -72,7 +69,7 @@ export default function LoginPage() {
         throw new Error(data.error || 'Password reset failed')
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong')
+      alert(err.message || 'Something went wrong')
     }
     finally {
       setNewPassword(false)
@@ -105,7 +102,6 @@ export default function LoginPage() {
           <button type="submit" className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
             {loading ? 'Logging in...' : 'Login'}
           </button>
-          {error && <p className="text-red-500">{error}</p>}
           <div className='text-md text-right'>
             <button type="button" onClick={() => setNewPassword(true)} className='hover:underline cursor-pointer'>Forgot Password ?</button>
           </div>
