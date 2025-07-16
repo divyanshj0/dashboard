@@ -1,0 +1,30 @@
+export default function AddCustomerModal({ form, onChange, onClose, onSubmit }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute top-3 right-3 text-xl">&times;</button>
+        <h3 className="text-2xl font-bold mb-6 text-blue-700">Add Customer Details</h3>
+
+        <form onSubmit={onSubmit} className="space-y-4">
+          {['name', 'city', 'state', 'country', 'email'].map(field => (
+            <div key={field}>
+              <label className="block text-sm font-medium mb-1 text-gray-600 capitalize">{field}</label>
+              <input
+                type={field === 'email' ? 'email' : 'text'}
+                value={form[field]}
+                onChange={(e) => onChange(field, e.target.value)}
+                className="w-full p-2 border rounded focus:outline-blue-500"
+                required={field !== 'state'}
+              />
+            </div>
+          ))}
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

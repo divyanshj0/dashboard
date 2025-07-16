@@ -79,9 +79,18 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     onNext(widgets);
   };
 
+  const formValid = widgets.every(w =>
+    w.name.trim() !== '' &&
+    w.parameters.length > 0 &&
+    w.parameters.every(p =>
+      p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== ''
+    )
+  );
+
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-20 z-50">
+    <div className="fixed inset-0 bg-black/70 flex items-start justify-center pt-20 z-50">
       <div className="bg-white w-full max-w-4xl max-h-[90vh] p-6 rounded shadow overflow-auto">
         <h2 className="text-xl font-bold mb-4">Configure Widgets</h2>
         {widgets.map((w, i) => (
@@ -167,7 +176,15 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           </button>
           <div>
             <button onClick={onClose} className="px-3 py-1 bg-gray-300 rounded mr-2">Cancel</button>
-            <button onClick={handleNext} className="px-3 py-1 bg-blue-600 text-white rounded">Next</button>
+            <button onClick={handleNext} className={clsx("px-3 py-1 rounded", {
+                "bg-blue-600 text-white": formValid,
+                "bg-gray-400 text-gray-700 cursor-not-allowed": !formValid
+              })}
+              disabled={!formValid}
+            >
+              Next
+            </button>
+
           </div>
         </div>
       </div>

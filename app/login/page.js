@@ -47,9 +47,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       alert(err.message || 'Login failed')
-    } finally {
-      setLoading(false)
-    }
+    }   
   }
   const handleForgotPass = async (e) => {
     e.preventDefault()

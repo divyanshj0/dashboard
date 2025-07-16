@@ -110,7 +110,7 @@ export default function Dashboard() {
           <div className="flex flex-col items-start md:items-center md:flex-row md:gap-2">
             <img src="/company_logo[1].png" alt="logo" className=" w-48" />
             <span className="text-xl md:text-2xl font-semibold">Water Monitoring Dashboard</span>
-            <div className="hidden md:flex gap-2 items-center">
+            <div className={`hidden ${!config || config.widgets.length === 0 ? '' : 'md:flex'} gap-2 items-center`}>
               <p className="text-md font-medium">Last Updated</p>
               <span>{lastUpdated}</span>
             </div>
@@ -161,7 +161,7 @@ export default function Dashboard() {
 
         {/* Mobile Sidebar */}
         {showSidebar && (
-          <div className="fixed left-[33%] inset-0 z-50 bg-black bg-opacity-40 rounded-sm flex">
+          <div className="md:hidden fixed left-[33%] inset-0 z-50 bg-black bg-opacity-40 rounded-sm flex">
             <div className="w-full bg-lime-100 p-4 flex flex-col gap-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">Menu</h2>
@@ -202,7 +202,7 @@ export default function Dashboard() {
                 </button>
 
               </div>
-              <div>
+              <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
                 <p className="font-medium">Last Updated</p>
                 <p>{lastUpdated}</p>
               </div>
@@ -211,7 +211,7 @@ export default function Dashboard() {
         )}
 
         {/* Main Content */}
-        {!config ? (
+        {!config || config.widgets.length === 0 ? (
           <div className="h-[75vh] flex items-center justify-center">
             <button
               className="bg-blue-600 text-white text-lg px-6 py-3 rounded hover:bg-blue-700"

@@ -27,7 +27,7 @@ export default function WidgetPlacementModal({ widgets, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="bg-white w-full sm:w-3/4 lg:w-2/3 max-h-[90vh] rounded-md p-4 shadow-lg overflow-auto relative">
         <h2 className="text-xl font-semibold mb-4">Arrange Dashboard Widgets</h2>
         <ResponsiveGridLayout
