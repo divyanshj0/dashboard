@@ -4,36 +4,47 @@ const TB = 'https://demo.thingsboard.io';
 export async function POST(req) {
   const { token } = await req.json();
 
-  let page = 0;
-  const pageSize = 100;
-  let allCustomers = [];
-  let hasNext = true;
-
   try {
-    while (hasNext) {
-      const res = await fetch(`${TB}/api/customers?pageSize=${pageSize}&page=${page}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Authorization': `Bearer ${token}`,
-        },
-      });
+    // Fetch all customers
+    const customerRes = await fetch(`${TB}/api/customers?pageSize=1000&page=0`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Authorization': `Bearer ${token}`,
+      },
+    });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Error fetching customers: ${res.status} ${res.statusText}`);
-        console.error('Response body:', errorText);
-        throw new Error(`Failed to fetch customer info: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      allCustomers = allCustomers.concat(data.data || []);
-      hasNext = data.hasNext;
-      page++;
+    if (!customerRes.ok) {
+      const err = await customerRes.text();
+      console.error('Failed to fetch customers:', err);
+      return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 });
     }
-    console.log('Fetched customers:', allCustomers);
-    return NextResponse.json(allCustomers);
+
+    const customerData = await customerRes.json();
+    const customers = customerData.data || [];
+
+    // Fetch users for each customer
+    const customersWithUsers = await Promise.all(
+      customers.map(async (customer) => {
+        try {
+          const userRes = await fetch(`${TB}/api/customer/${customer.id.id}/users?pageSize=1000&page=0`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Authorization': `Bearer ${token}`,
+            },
+          });
+
+          const userData = await userRes.json();
+          return { ...customer, users: userData.data || [] };
+        } catch (error) {
+          console.error(`Failed to fetch users for customer ${customer.title}:`, error);
+          return { ...customer, users: [] };
+        }
+      })
+    );
+
+    return NextResponse.json(customersWithUsers);
   } catch (error) {
-    console.error('Exception:', error);
+    console.error('Exception in getcustomer:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

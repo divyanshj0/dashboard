@@ -11,7 +11,6 @@ import WidgetRenderer from '@/components/WidgetRenderer';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [telemetry, setTelemetry] = useState({});
   const [config, setConfig] = useState(null);
   const [layout, setLayout] = useState([]);
   const [name, setName] = useState('');
@@ -21,6 +20,7 @@ export default function Dashboard() {
   const [createdWidgets, setCreatedWidgets] = useState([]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [token, setToken] = useState('');
   const lastUpdated = '10 July 2025';
   const status = 'Normal';
 
@@ -29,7 +29,7 @@ export default function Dashboard() {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
       const userId = localStorage.getItem('tb_userId');
-
+      setToken(token);
       if (!token) {
         router.push('/');
         return;
@@ -43,7 +43,6 @@ export default function Dashboard() {
         });
 
         const result = await res.json();
-        setTelemetry(result.telemetry || {});
         setConfig(result.config || null);
         setLayout(result.layout || []);
       } catch (err) {
@@ -223,7 +222,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="mt-4 px-4 min-h-[72vh]">
-            <WidgetRenderer config={config} telemetry={telemetry} layout={layout} onLayoutSave={handleSaveLayout} />
+            <WidgetRenderer config={config}  layout={layout} onLayoutSave={handleSaveLayout} token={token}/>
           </div>
         )}
 

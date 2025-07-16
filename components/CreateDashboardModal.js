@@ -19,15 +19,19 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     const token = localStorage.getItem('tb_token');
     Promise.all(
       tbDevices.map(dev =>
-        fetch(`https://demo.thingsboard.io/api/plugins/telemetry/DEVICE/${dev.id.id}/values/attributes?keys=telemetryKeys`, {
+        fetch(`https://demo.thingsboard.io/api/plugins/telemetry/DEVICE/${dev.id.id}/keys/timeseries`, {
           headers: { 'X-Authorization': `Bearer ${token}` },
-        }).then(res => res.json()).then(attrs => {
-          const teleAttr = attrs.find(a => a.key === 'telemetryKeys');
-          const keys = teleAttr?.value?.telemetryKeys || [];
-          return { id: dev.id.id, name: dev.name, keys };
         })
+          .then(res => res.json())
+          .then(keys => ({
+            id: dev.id.id,
+            name: dev.name,
+            keys: Array.isArray(keys) ? keys : [],
+          }))
       )
-    ).then(setDevices).catch(console.error);
+    )
+      .then(setDevices)
+      .catch(console.error);
   }, []);
 
   const addWidget = () => {
@@ -80,7 +84,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-20 z-50">
       <div className="bg-white w-full max-w-4xl max-h-[90vh] p-6 rounded shadow overflow-auto">
         <h2 className="text-xl font-bold mb-4">Configure Widgets</h2>
-        {widgets.map((w, i) => (  
+        {widgets.map((w, i) => (
           <div key={w.id} className="border p-3 rounded mb-4 bg-gray-200">
             <div className="grid grid-cols-2 gap-2 md:flex justify-between items-center">
               <input
@@ -141,16 +145,16 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     className="border p-1 rounded"
                   />
                   <button onClick={() => removeParam(i, pi)} className="text-red-500">
-                    <FiTrash2 size={20}/>
+                    <FiTrash2 size={20} />
                   </button>
                 </div>
               ))}
               <div className='flex justify-between items-center mt-4'>
                 <button onClick={() => addParam(i)} className="text-blue-600 mt-1 flex items-center">
-                  <FiPlus className='mr-1'size={20} /> Add Parameter
+                  <FiPlus className='mr-1' size={20} /> Add Parameter
                 </button>
                 <button onClick={() => removeWidget(i)} className="text-red-600 ml-2 flex items-center">
-                  <FiTrash2 className='mr-1'size={20} /> Remove Widget
+                  <FiTrash2 className='mr-1' size={20} /> Remove Widget
                 </button>
               </div>
             </div>
@@ -159,7 +163,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
         <div className="flex justify-between mt-4">
           <button onClick={addWidget} className="text-blue-600 flex items-center">
-            <FiPlus className='mr-1'size={20} /> Add Widget
+            <FiPlus className='mr-1' size={20} /> Add Widget
           </button>
           <div>
             <button onClick={onClose} className="px-3 py-1 bg-gray-300 rounded mr-2">Cancel</button>

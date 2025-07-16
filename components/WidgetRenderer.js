@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import WaterProperty from './waterproperty';
 import Efficiency from './efficiencydonut';
@@ -13,20 +14,72 @@ import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function WidgetRenderer({ config, telemetry, layout, onLayoutSave }) {
+export default function WidgetRenderer({ config, layout, onLayoutSave, token }) {
+  const [timeSeries, setTimeSeries] = useState({});
+
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
+
+  // Fetch time-series data on mount
+  useEffect(() => {
+    const fetchTimeSeriesForAllWidgets = async () => {
+      const result = {};
+
+      // Loop through each widget and its parameters
+      for (const widget of config.widgets) {
+        const parameters = widget.parameters || [];
+        for (const param of parameters) {
+          const compositeKey = `${param.deviceId}_${param.key}`;
+          // Skip if already fetched
+          if (result[compositeKey]) continue;
+
+          try {
+            const res = await fetch('/api/thingsboard/timeseriesdata', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token,
+                deviceId: param.deviceId,
+                key: param.key,
+                limit: 100, // or use startTs/endTs for time range
+                startTs: 1751923200000,
+                endTs: 1753113599000,
+                interval: 60000,
+              }),
+            });
+
+            const data = await res.json();
+
+            result[compositeKey] = Array.isArray(data[param.key])
+              ? data[param.key].map((item) => ({
+                  ts: Number(item.ts),
+                  value: parseFloat(item.value),
+                }))
+              : [];
+          } catch (error) {
+            console.error(`Failed to fetch data for ${compositeKey}`, error);
+            result[compositeKey] = [];
+          }
+        }
+      }
+
+      setTimeSeries(result);
+    };
+
+    fetchTimeSeriesForAllWidgets();
+  }, [config, token]);
+
+  // Helpers
   const getValue = (key, deviceId) => {
     const flatKey = `${deviceId}_${key}`;
-    const rawValue = telemetry?.[flatKey]?.[0]?.value;
-    return rawValue !== undefined ? parseFloat(rawValue) : null;
+    const point = timeSeries[flatKey]?.[timeSeries[flatKey].length - 1];
+    return point ? point.value : null;
   };
 
   const getSeriesData = (key, deviceId) => {
     const flatKey = `${deviceId}_${key}`;
-    return telemetry?.[flatKey]?.map(item => ({
-      ts: Number(item.ts),
-      value: parseFloat(item.value)
-    })) || [];
+    return timeSeries[flatKey] || [];
   };
 
   return (
@@ -51,15 +104,16 @@ export default function WidgetRenderer({ config, telemetry, layout, onLayoutSave
           label: p.label || p.key,
           unit: p.unit || '',
         }));
+        console.log(w.name, 'series:', series);
 
         return (
           <div key={key} className="bg-white p-2 z-[1] rounded shadow drag-handle">
             {(() => {
-              switch (w.type) {
+              switch (w.type) { 
                 case 'donut':
-                  return <Efficiency value={series[0]?.value || 0} label={w.name} />;
+                  return <Efficiency series={series} label={w.name} />;
                 case 'pie':
-                  return <EnergyEfficiency value={series[0]?.value || 0} />;
+                  return <EnergyEfficiency series={series} label={w.name} />;
                 case 'line':
                   return <TreatedWaterChart title={w.name} series={series} />;
                 case 'table':

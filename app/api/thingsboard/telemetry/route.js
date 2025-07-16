@@ -19,28 +19,9 @@ export async function POST(req) {
     const configJson = typeof attrData === 'object' && attrData.length ? attrData.find((a) => a.key === 'dashboardConfig')?.value : null;
     const config = typeof configJson === 'string' ? JSON.parse(configJson) : configJson;
 
-    const telemetry = {};
-
-    if (config?.widgets) {
-      await Promise.all(
-        config.widgets.map(async (widget) => {
-          for (const param of widget.parameters || []) {
-            const key = param.key;
-            const deviceId = param.deviceId;
-            const response = await fetch(`${TB_URL}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=${key}&limit=20`, {
-              headers: { 'X-Authorization': `Bearer ${token}` },
-            });
-            const data = await response.json();
-            telemetry[`${deviceId}_${key}`] = data[key] || [];
-          }
-        })
-      );
-    }
-
     return NextResponse.json({
       config,
       layout: config?.layout || [],
-      telemetry
     });
   } catch (err) {
     console.error('Error fetching telemetry/config:', err);
