@@ -3,9 +3,11 @@ import AddUserModal from '@/components/AddUserModal';
 import AddCustomerModal from '@/components/AddCustomerModal';
 import UserListModal from '@/components/UserListModal';
 import DeviceListModal from '@/components/DeviceListModal';
+import AddDeviceModal from '@/components/AddDeviceModal';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
+import { TbDeviceDesktopPlus } from "react-icons/tb";
 export default function AdminDashboard() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -16,7 +18,9 @@ export default function AdminDashboard() {
   const [customerDevices, setCustomerDevices] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '' });
+  const [newDevice, setNewDevice] = useState({ name: '', label: '' });
   const [loading, setLoading] = useState(true);
+  const [save,setSave]= useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -62,9 +66,11 @@ export default function AdminDashboard() {
         email: addCustomerForm.email
       })
     });
-    setShowAddModal(false);
     setAddCustomerForm({ name: '', city: '', state: '', country: '', email: '' });
     fetchCustomers(token);
+    setSave(false);
+    alert('Customer added successfully');
+    setShowAddModal(false);
   };
   const handleAddUser = async () => {
     await fetch('/api/thingsboard/addUser', {
@@ -78,7 +84,25 @@ export default function AdminDashboard() {
       }),
     });
     setNewUser({ email: '', firstName: '', lastName: '' });
-    fetchCustomers(token);
+    setSave(false);
+    alert('User added successfully');
+    setShowAddUserModal(false);
+  };
+
+  const handleAddDevice = async () => {
+    await fetch('/api/thingsboard/createdevice', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+        customerId: selectedCustomerId,
+        name: newDevice.name,
+        label: newDevice.label
+      }),
+    });
+    setNewDevice({ name: '', label: '' });
+    setSave(false);
+    alert('Device added successfully');
+    setShowAddDeviceModal(false);
   };
   const fetchUser = async (token, customerId) => {
     setShowUserModal(true);
@@ -178,6 +202,9 @@ export default function AdminDashboard() {
                     <button onClick={() => { setSelectedCustomerId(customer.id.id); fetchDevices(token, customer.id.id); setLoadingModal(true); setShowDeviceModal(true); }}>
                       <FiMonitor className="hover:text-indigo-500 cursor-pointer" title="Devices" />
                     </button>
+                    <button onClick={() => { setSelectedCustomerId(customer.id.id); setShowAddDeviceModal(true); }}>
+                      <TbDeviceDesktopPlus className="hover:text-indigo-500 cursor-pointer" title="Add Device" />
+                    </button>
                   </div>
                   <button onClick={() => handleDeleteCustomer(customer.id.id)}>
                     <FiTrash className="text-red-500 hover:text-red-700 text-xl" title="Delete Customer" />
@@ -204,7 +231,8 @@ export default function AdminDashboard() {
               form={addCustomerForm}
               onChange={(field, value) => setAddCustomerForm((f) => ({ ...f, [field]: value }))}
               onClose={() => setShowAddModal(false)}
-              onSubmit={handleAddCustomerForm}
+              save={save}
+              onSubmit={() => { handleAddCustomerForm(); setSave(true); }}
             />
           )}
 
@@ -223,7 +251,8 @@ export default function AdminDashboard() {
             <AddUserModal
               user={newUser}
               onChange={(field, value) => setNewUser((u) => ({ ...u, [field]: value }))}
-              onSubmit={handleAddUser}
+              onSubmit={() => { handleAddUser(); setSave(true); }}
+              save={save}
               onClose={() => setShowAddUserModal(false)}
             />
           )}
@@ -235,6 +264,15 @@ export default function AdminDashboard() {
               onRefresh={async () => {
                 await fetchDevices(token, selectedCustomerId);
               }}
+            />
+          )}
+          {showAddDeviceModal && (
+            <AddDeviceModal
+              device={newDevice}
+              onChange={(field, value) => setNewDevice((d) => ({ ...d, [field]: value }))}
+              onSubmit={() => { handleAddDevice(); setSave(true); }}
+              save={save}
+              onClose={() => setShowAddDeviceModal(false)}
             />
           )}
           <div className="bg-blue-100 text-center mt-4 py-4 rounded-md">
