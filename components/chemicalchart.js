@@ -24,7 +24,7 @@ export default function ChemicalChart({ title = "", series = [] }) {
   const chartData = transformSeries(series).slice(-20);
 
   const Chart = ({ data, fullView }) => (
-    <ResponsiveContainer width="100%" height={fullView ? 300 : 150}>
+    <ResponsiveContainer width="100%" height={fullView ? "80%" : 150}>
       <BarChart data={data}>
         <XAxis dataKey="time" />
         <YAxis>
