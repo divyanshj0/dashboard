@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX } from 'react-icons/fi';
 import clsx from 'clsx';
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [config, setConfig] = useState(null);
   const [layout, setLayout] = useState([]);
+  const [draftLayout, setDraftLayout] = useState(null); // track unsaved layout
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -21,9 +22,30 @@ export default function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [token, setToken] = useState('');
+  const [saveLayout, setSaveLayout] = useState(false); // edit mode
+  const [save, setSave] = useState(false);
   const lastUpdated = '10 July 2025';
   const status = 'Normal';
+  const menuRef = useRef(null);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+  
   useEffect(() => {
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
@@ -91,7 +113,31 @@ export default function Dashboard() {
       console.error('Layout save error:', err);
     }
   };
+  const handleSaveConfig = async (newConfig) => {
+    const token = localStorage.getItem('tb_token');
+    const userId = localStorage.getItem('tb_userId');
 
+    try {
+      const res = await fetch('/api/thingsboard/saveDashboardConfig', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          userId,
+          config: newConfig,
+        }),
+      });
+
+      if (res.ok) {
+        setConfig(newConfig);
+      } else {
+        console.error('Failed to save config');
+      }
+    } catch (err) {
+      console.error('Config save error:', err);
+    }
+  };
+
+      
   const dotClass = clsx('h-3 w-3 rounded-full', 'bg-green-500');
   const textClass = clsx('text-lg font-medium', 'text-green-500');
 
@@ -117,12 +163,11 @@ export default function Dashboard() {
           </div>
           {/* Desktop Options */}
           <div className="hidden md:flex items-center gap-6">
-            
             <div className="flex items-center gap-2">
               <span className={dotClass} />
               <p className={textClass}>{status}</p>
             </div>
-            <div className="relative inline-block text-left">
+            <div className="relative inline-block text-left" ref={menuRef}>
               <div
                 className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
                 onClick={() => setShowMenu((prev) => !prev)}
@@ -130,26 +175,46 @@ export default function Dashboard() {
                 <FiUser size={24} className="mr-2" /> {name}
               </div>
               {showMenu && (
-              <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                <div className="py-1">
-                  <button
-                    className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full"
-                    onClick={() => {
-                      setShowCreateModal(true);
-                    }}
-                  >
-                    <FiEdit2 size={20} className="mr-2" /> Customize
-                  </button>
-                  <Link href="/dataupdate" className="px-4 py-2 text-blue-600 text-lg flex justify-center"><BsDatabaseUp size={20} className="mr-2" />DataUpdate</Link>
-                  <button
-                    className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
-                    onClick={handleLogout}
-                  >
-                    <FiLogOut size={20} className="mr-2" /> Logout
-                  </button>
+                <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1">
+                    <button
+                      className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full"
+                      onClick={() => {
+                        setShowCreateModal(true);
+                        setShowMenu((prev) => !prev);
+                      }}
+                    >
+                      <FiEdit2 size={20} className="mr-2" /> Customize
+                    </button>
+                    <button
+                      className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full"
+                      onClick={() => {
+                        setDraftLayout(layout); // store current layout for editing
+                        setSaveLayout(true);
+                        setShowMenu((prev) => !prev);
+                      }}
+                    >
+                      <FiEdit2 size={20} className="mr-2" />Edit Layout
+                    </button>
+
+                    <Link
+                      href="/dataupdate"
+                      className="px-4 py-2 text-blue-600 text-lg flex justify-center"
+                    >
+                      <BsDatabaseUp size={20} className="mr-2" />DataUpdate
+                    </Link>
+                    <button
+                      className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
+                      onClick={() => {
+                        handleLogout();
+                        setShowMenu((prev) => !prev);
+                      }}
+                    >
+                      <FiLogOut size={20} className="mr-2" /> Logout
+                    </button>
+                  </div>
                 </div>
-              </div>
-              )}  
+              )}
             </div>
           </div>
 
@@ -181,7 +246,6 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="text-lg font-medium">
-                
                 <button
                   className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
                   onClick={() => {
@@ -200,7 +264,6 @@ export default function Dashboard() {
                 >
                   <FiLogOut size={20} className="mr-2" /> Logout
                 </button>
-
               </div>
               <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
                 <p className="font-medium">Last Updated</p>
@@ -221,8 +284,33 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="mt-4 px-4 min-h-[72vh]">
-            <WidgetRenderer config={config}  layout={layout} onLayoutSave={handleSaveLayout} token={token}/>
+          <div className="mt-4 px-4 min-h-[74vh] flex flex-col justify-between">
+            <WidgetRenderer config={config} layout={saveLayout ? (draftLayout ?? layout) : layout} onLayoutSave={(newLayout) => setDraftLayout(newLayout)} saveLayout={saveLayout} token={token} />
+            <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                onClick={async () => {
+                  setSave(true);
+                  if (draftLayout) {
+                    await handleSaveLayout(draftLayout);
+                  }
+                  setSaveLayout(false);
+                  setDraftLayout(null);
+                  setSave(false);
+                }}
+              >
+                {save ? "Saving..." : "Save Layout"}
+              </button>
+              <button
+                className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+                onClick={() => {
+                  setSaveLayout(false);
+                  setDraftLayout(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -252,10 +340,11 @@ export default function Dashboard() {
           onSave={(finalWidgets) => {
             const updatedConfig = {
               widgets: finalWidgets,
-              layout: finalWidgets.map(w => w.layout),
+              layout: finalWidgets.map((w) => w.layout),
             };
             setConfig(updatedConfig);
             setLayout(updatedConfig.layout);
+            handleSaveConfig(updatedConfig);
             setShowPlacementModal(false);
           }}
           onClose={() => setShowPlacementModal(false)}

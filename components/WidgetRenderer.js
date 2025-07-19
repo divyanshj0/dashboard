@@ -14,7 +14,7 @@ import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function WidgetRenderer({ config, layout, onLayoutSave, token }) {
+export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token }) {
   const [timeSeries, setTimeSeries] = useState({});
 
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
@@ -24,12 +24,10 @@ export default function WidgetRenderer({ config, layout, onLayoutSave, token }) 
     const fetchTimeSeriesForAllWidgets = async () => {
       const result = {};
 
-      // Loop through each widget and its parameters
       for (const widget of config.widgets) {
         const parameters = widget.parameters || [];
         for (const param of parameters) {
           const compositeKey = `${param.deviceId}_${param.key}`;
-          // Skip if already fetched
           if (result[compositeKey]) continue;
 
           try {
@@ -42,7 +40,7 @@ export default function WidgetRenderer({ config, layout, onLayoutSave, token }) 
                 token,
                 deviceId: param.deviceId,
                 key: param.key,
-                limit: 100, // or use startTs/endTs for time range
+                limit: 100,
                 startTs: 1751923200000,
                 endTs: 1753113599000,
                 interval: 60000,
@@ -89,9 +87,11 @@ export default function WidgetRenderer({ config, layout, onLayoutSave, token }) 
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
       cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
       rowHeight={100}
-      isDraggable
-      isResizable
+      isDraggable={saveLayout}
+      isResizable={saveLayout}
       onLayoutChange={(newLayout) => {
+        // Only update layout when in edit mode
+        if (!saveLayout) return;
         if (onLayoutSave) onLayoutSave(newLayout);
       }}
     >
@@ -104,12 +104,11 @@ export default function WidgetRenderer({ config, layout, onLayoutSave, token }) 
           label: p.label || p.key,
           unit: p.unit || '',
         }));
-        console.log(w.name, 'series:', series);
 
         return (
-          <div key={key} className="bg-white p-2 z-[1] rounded shadow drag-handle">
+          <div key={key} className={`${saveLayout ? 'bg-white p-2' : ''} z-[1] rounded`}>
             {(() => {
-              switch (w.type) { 
+              switch (w.type) {
                 case 'donut':
                   return <Efficiency series={series} label={w.name} />;
                 case 'pie':
