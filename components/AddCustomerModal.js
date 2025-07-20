@@ -1,4 +1,14 @@
+import { useEffect } from "react";
 export default function AddCustomerModal({ form, onChange, onClose, save, onSubmit }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">

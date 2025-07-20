@@ -1,6 +1,24 @@
 import { FiTrash,FiRefreshCw } from 'react-icons/fi';
+import { MdDashboardCustomize } from "react-icons/md";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onAddDashboard }) {
+  const router = useRouter();
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
-export default function UserListModal({ users, loading, onClose, onRefresh, onDelete }) {
+  const handleCreateDashboard = (userId,userName) => {
+    if (userName) {
+      router.push(`/${userName}/dashboard/${userId}`);
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 bg-black/70  flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
@@ -21,7 +39,10 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
                   <p className="font-medium">{user.firstName} {user.lastName}</p>
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
-                <button onClick={() => onDelete(user.id.id)} className="text-red-500"><FiTrash /></button>
+                <div className='flex items-center gap-5'>
+                  <button onClick={() => handleCreateDashboard(user.id.id,user.firstName+user.lastName)} className="text-gray-400 hover:text-gray-800" title='create Dashboard'><MdDashboardCustomize size={20}/></button>
+                  <button onClick={() => onDelete(user.id.id)} className="text-red-400 hover:text-red-700"><FiTrash size={20}/></button>
+                </div>
               </li>
             ))}
           </ul>

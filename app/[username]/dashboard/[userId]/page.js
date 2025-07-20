@@ -1,22 +1,20 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX,FiLayout } from 'react-icons/fi';
-import { FaKey } from "react-icons/fa6";
+import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout } from 'react-icons/fi';
 import clsx from 'clsx';
 import { BsDatabaseUp } from 'react-icons/bs';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
 import WidgetPlacementModal from '@/components/WidgetPlacementModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
-import ChangePasswordModal from '@/components/changePasswordModal';
 
-export default function Dashboard() {
+export default function DashboardPage({ params }) {
+  const { username, userId } = params;
   const router = useRouter();
   const [config, setConfig] = useState(null);
   const [layout, setLayout] = useState([]);
-  const [draftLayout, setDraftLayout] = useState(null); // track unsaved layout
-  const [name, setName] = useState('');
+  const [draftLayout, setDraftLayout] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPlacementModal, setShowPlacementModal] = useState(false);
@@ -24,7 +22,6 @@ export default function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUpdateData, setShowUpdateData] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
   const [token, setToken] = useState('');
   const [saveLayout, setSaveLayout] = useState(false); // edit mode
   const [save, setSave] = useState(false);
@@ -49,12 +46,11 @@ export default function Dashboard() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMenu]);
-  
+
   useEffect(() => {
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
-      const userId = localStorage.getItem('tb_userId');
       setToken(token);
       if (!token) {
         router.push('/');
@@ -79,13 +75,11 @@ export default function Dashboard() {
     };
 
     fetchTelemetry();
-    const user = localStorage.getItem('userName');
-    if (user) setName(user);
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
-    router.push('/');
+    router.push('/admindashboard');
+    
   };
 
   const handleSaveLayout = async (newLayout) => {
@@ -119,7 +113,6 @@ export default function Dashboard() {
   };
   const handleSaveConfig = async (newConfig) => {
     const token = localStorage.getItem('tb_token');
-    const userId = localStorage.getItem('tb_userId');
 
     try {
       const res = await fetch('/api/thingsboard/saveDashboardConfig', {
@@ -141,7 +134,7 @@ export default function Dashboard() {
     }
   };
 
-      
+
   const dotClass = clsx('h-3 w-3 rounded-full', 'bg-green-500');
   const textClass = clsx('text-lg font-medium', 'text-green-500');
 
@@ -176,7 +169,7 @@ export default function Dashboard() {
                 className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
                 onClick={() => setShowMenu((prev) => !prev)}
               >
-                <FiUser size={24} className="mr-2" /> {name}
+                <FiUser size={24} className="mr-2" /> {username}
               </div>
               {showMenu && (
                 <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
@@ -202,28 +195,21 @@ export default function Dashboard() {
                     </button>
 
                     <button
-                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-full"
-                      onClick={() => {setShowUpdateData(true); setShowMenu((prev) => !prev);
+                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-max"
+                      onClick={() => {
+                        setShowUpdateData(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <BsDatabaseUp size={20} className="mr-2" />Data Update
                     </button>
                     <button
-                      className="px-4 py-2 text-blue-600 text-lg flex justify-center items-center hover:bg-gray-100 w-max"
-                      onClick={() => {setShowChangePassword(true); setShowMenu((prev) => !prev);
-                      }}
-                    >
-                      <FaKey size={20} className="mr-2" />Change Password
-                    </button>
-
-                    <button
-                      className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
+                      className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-max"
                       onClick={() => {
                         handleLogout();
                         setShowMenu((prev) => !prev);
                       }}
                     >
-                      <FiLogOut size={20} className="mr-2" /> Logout
+                      <FiLogOut size={20} className="mr-2" /> Admin Panel
                     </button>
                   </div>
                 </div>
@@ -249,7 +235,7 @@ export default function Dashboard() {
               </div>
               <div className="flex gap-5 items-center">
                 <p className='text-lg font-medium'>Profile</p>
-                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {name}</p>
+                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {username}</p>
               </div>
               <div className="flex items-center gap-5">
                 <p className='text-lg font-medium'>Status</p>
@@ -276,18 +262,17 @@ export default function Dashboard() {
                   onClick={() => { setShowUpdateData(true); setShowSidebar(false); }}>
                   <BsDatabaseUp size={20} className="mr-2" /> Data Update
                 </button>
-                <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
-                  onClick={() => { setShowChangePassword(true); setShowSidebar(false); }}>
-                  <FaKey size={20} className="mr-2" /> Change Password
-                </button>
                 <button
-                  className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"
-                  onClick={handleLogout}
+                  className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
+                  onClick={() => {
+                    handleLogout();
+                  }}
                 >
                   <FiLogOut size={20} className="mr-2" /> Logout
                 </button>
+
               </div>
-              <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
+              <div className={`${!config || config.widgets.length === 0 ? 'hidden' : ''}`}>
                 <p className="font-medium">Last Updated</p>
                 <p>{lastUpdated}</p>
               </div>
@@ -375,13 +360,9 @@ export default function Dashboard() {
       {showUpdateData && (
         <DataUpdate
           onClose={() => setShowUpdateData(false)}
-          />
-      )}
-      {showChangePassword && (
-        <ChangePasswordModal
-          onClose={() => setShowChangePassword(false)}
         />
       )}
+
     </>
   );
 }

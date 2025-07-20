@@ -114,13 +114,13 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 case 'pie':
                   return <EnergyEfficiency series={series} label={w.name} />;
                 case 'line':
-                  return <TreatedWaterChart title={w.name} series={series} />;
+                  return <TreatedWaterChart title={w.name} series={series} saveLayout={saveLayout} />;
                 case 'table':
-                  return <FlowRaterChart title={w.name} series={series} />;
+                  return <FlowRaterChart title={w.name} series={series} saveLayout={saveLayout} />;
                 case 'bar':
-                  return <ChemicalChart title={w.name} series={series} />;
+                  return <ChemicalChart title={w.name} series={series} saveLayout={saveLayout} />;
                 case 'chemicaldosage':
-                  return <ChemicalDosage title={w.name} series={series} />;
+                  return <ChemicalDosage title={w.name} series={series} saveLayout={saveLayout} />;
                 case 'waterproperty':
                   return <WaterProperty {...series[0]} />;
                 default:

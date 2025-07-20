@@ -14,7 +14,14 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [paramToDelete, setParamToDelete] = useState(null);
   useEffect(() => {
     if (open) setWidgets(existingWidgets.map(w => ({ ...w })));
-  }, [open, existingWidgets]);
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, existingWidgets, onClose]);
 
   useEffect(() => {
     const tbDevices = JSON.parse(localStorage.getItem('tb_devices') || '[]');

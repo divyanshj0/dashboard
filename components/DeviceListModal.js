@@ -1,6 +1,15 @@
 import { FiRefreshCw } from 'react-icons/fi';
+import { useEffect } from 'react';
 export default function DeviceListModal({ devices, loading, onClose, onRefresh }) {
-    console.log('DeviceListModal devices:', devices);
+    useEffect(() => {
+        function handleKeyDown(event) {
+            if (event.key === "Escape") {
+                onClose();
+            }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
     return (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
             <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">

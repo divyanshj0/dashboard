@@ -7,8 +7,9 @@ import AddDeviceModal from '@/components/AddDeviceModal';
 import DeletePopup from '@/components/deletepopup';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState,useRef } from 'react';
-import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut,FiRefreshCw} from 'react-icons/fi';
+import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
 import { TbDeviceDesktopPlus } from "react-icons/tb";
+import { FaKey } from 'react-icons/fa6';
 export default function AdminDashboard() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -28,6 +29,7 @@ export default function AdminDashboard() {
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddDeviceModal, setShowAddDeviceModal] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: ''});
   const [isDeleteCustomer, setIsDeleteCustomer] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -156,6 +158,11 @@ export default function AdminDashboard() {
     setDeleting(false);
     setIsDeleteCustomer(false);
   };
+
+  const handleAddDashboard=(userId)=>{
+
+  }
+
   const handleLogout = () => {
     localStorage.clear();
     router.push('/');
@@ -184,6 +191,12 @@ export default function AdminDashboard() {
               {showMenu && (
                 <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                   <div className="py-1">
+                    <button
+                      className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-max"
+                      onClick={() => {setShowChangePassword(true); setShowMenu(false);}}
+                    >
+                      <FaKey size={20} className="mr-2" /> Change Password
+                    </button>
                     <button
                       className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
                       onClick={handleLogout}
@@ -278,6 +291,7 @@ export default function AdminDashboard() {
                 await fetchUser(token, selectedCustomerId);
               }}
               onDelete={handleDeleteUser}
+              onAddDashboard={handleAddDashboard}
             />
           )}
           {showAddUserModal && (
@@ -306,6 +320,11 @@ export default function AdminDashboard() {
               onSubmit={() => { handleAddDevice(); setSave(true); }}
               save={save}
               onClose={() => setShowAddDeviceModal(false)}
+            />
+          )}
+          {showChangePassword && (
+            <ChangePasswordModal
+              onClose={() => setShowChangePassword(false)}
             />
           )}
           <div className="bg-blue-100 text-center mt-4 py-4 rounded-md">

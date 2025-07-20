@@ -1,7 +1,7 @@
 'use client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 import { FiMaximize } from 'react-icons/fi';
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6366F1"];
@@ -18,10 +18,20 @@ function transformSeries(series) {
   return Object.values(points);
 }
 
-export default function ChemicalChart({ title = "", series = [] }) {
+export default function ChemicalChart({ title = "", series = [], saveLayout }) {
   const [isOpen, setIsOpen] = useState(false);
   const chartData = transformSeries(series).slice(-20).reverse();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
   const Chart = ({ data, fullView }) => (
     <ResponsiveContainer width="95%" height={fullView ? 300 : "80%"}>
       <BarChart data={data}>
@@ -42,7 +52,7 @@ export default function ChemicalChart({ title = "", series = [] }) {
     <div className="bg-white h-full w-full rounded-md shadow-md">
       <div className="flex items-center justify-between px-2 pt-1">
         <p className="text-lg font-medium">{title}</p>
-        <button onClick={() => setIsOpen(true)} title="fullscreen" >
+        <button onClick={() => setIsOpen(true)} title="fullscreen" className={`${saveLayout?'hidden':''}`} >
           <FiMaximize />
         </button>
       </div>

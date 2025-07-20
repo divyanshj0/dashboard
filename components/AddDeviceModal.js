@@ -1,4 +1,14 @@
+import { useEffect } from "react";
 export default function AddDeviceModal({ device, onChange, onSubmit,save, onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
