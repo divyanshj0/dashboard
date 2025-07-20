@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 const TB = 'https://demo.thingsboard.io';
 
 export async function POST(req) {
-  const { token, title, city, state, country, email } = await req.json();
+  const { token, title, city, state, country } = await req.json();
   const body = {
     title,
-    email: email || '',
     country: country || '',
     state: state || '',
     city: city || ''

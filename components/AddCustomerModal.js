@@ -6,15 +6,15 @@ export default function AddCustomerModal({ form, onChange, onClose, save, onSubm
         <h3 className="text-2xl font-bold mb-6 text-blue-700">Add Customer Details</h3>
 
         <form className="space-y-4">
-          {['name', 'city', 'state', 'country', 'email'].map(field => (
+          {['name', 'city', 'state', 'country'].map(field => (
             <div key={field}>
               <label className="block text-sm font-medium mb-1 text-gray-600 capitalize">{field}</label>
               <input
-                type={field === 'email' ? 'email' : 'text'}
+                type='text'
                 value={form[field]}
                 onChange={(e) => onChange(field, e.target.value)}
                 className="w-full p-2 border rounded focus:outline-blue-500"
-                required={field !== 'state'}
+                required
               />
             </div>
           ))}

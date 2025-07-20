@@ -1,12 +1,14 @@
-import { FiTrash } from 'react-icons/fi';
+import { FiTrash,FiRefreshCw } from 'react-icons/fi';
 
 export default function UserListModal({ users, loading, onClose, onRefresh, onDelete }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70  flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
-        <button onClick={onClose} className="absolute right-4 top-4 text-xl">&times;</button>
-        <h2 className="text-xl font-semibold mb-4 text-blue-700">Users for Customer</h2>
-        <button onClick={onRefresh} className="mb-4 px-4 py-2 bg-blue-500 text-white rounded">Refresh Users</button>
+        <button onClick={onClose} className="absolute right-4 top-4 text-3xl cursor-pointer hover:text-red-600 hover:scale-105">&times;</button>
+        <div className='flex gap-5 items-center mb-4'>
+          <h2 className="text-xl font-semibold  text-blue-700">Users for Customer</h2>
+          <button onClick={onRefresh} className="p-1 hover:bg-gray-300 cursor-pointer hover:scale-105 text-black rounded"><FiRefreshCw  size={20}/></button>
+        </div>
         {loading && <p className="text-gray-500">Loading users...</p>}
         {!loading && users.length === 0 && (
           <p className="text-gray-500">No users found.</p>

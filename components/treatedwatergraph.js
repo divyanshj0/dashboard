@@ -20,7 +20,7 @@ function transformSeries(series) {
 
 export default function TreatedWaterChart({ title = "", series = [] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const chartData = transformSeries(series).slice(-20);
+  const chartData = transformSeries(series).slice(-20).reverse();
 
   const Chart = ({ data, fullView }) => (
     <ResponsiveContainer width="95%" height={fullView ? 300 : "80%"}>

@@ -4,9 +4,10 @@ import AddCustomerModal from '@/components/AddCustomerModal';
 import UserListModal from '@/components/UserListModal';
 import DeviceListModal from '@/components/DeviceListModal';
 import AddDeviceModal from '@/components/AddDeviceModal';
+import DeletePopup from '@/components/deletepopup';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
+import { useEffect, useState,useRef } from 'react';
+import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut,FiRefreshCw} from 'react-icons/fi';
 import { TbDeviceDesktopPlus } from "react-icons/tb";
 export default function AdminDashboard() {
   const router = useRouter();
@@ -27,7 +28,28 @@ export default function AdminDashboard() {
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddDeviceModal, setShowAddDeviceModal] = useState(false);
-  const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: '', email: '' });
+  const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: ''});
+  const [isDeleteCustomer, setIsDeleteCustomer] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+  
   useEffect(() => {
     const t = localStorage.getItem('tb_token');
     const username= localStorage.getItem('userName');
@@ -52,6 +74,7 @@ export default function AdminDashboard() {
       body: JSON.stringify({ token, customerId }),
     });
     fetchCustomers(token);
+    setIsDeleteCustomer(false);
   };
 
   const handleAddCustomerForm = async () => {
@@ -62,11 +85,10 @@ export default function AdminDashboard() {
         title: addCustomerForm.name,
         city: addCustomerForm.city,
         state: addCustomerForm.state,
-        country: addCustomerForm.country,
-        email: addCustomerForm.email
+        country: addCustomerForm.country
       })
     });
-    setAddCustomerForm({ name: '', city: '', state: '', country: '', email: '' });
+    setAddCustomerForm({ name: '', city: '', state: '', country: ''});
     fetchCustomers(token);
     setSave(false);
     alert('Customer added successfully');
@@ -131,6 +153,8 @@ export default function AdminDashboard() {
       body: JSON.stringify({ token, userId }),
     });
     fetchCustomers(token);
+    setDeleting(false);
+    setIsDeleteCustomer(false);
   };
   const handleLogout = () => {
     localStorage.clear();
@@ -150,7 +174,7 @@ export default function AdminDashboard() {
             <img src="/company_logo[1].png" alt="logo" className=" w-48" />
           </div>
           <div className="flex items-center gap-6">
-            <div className="relative inline-block text-left">
+            <div className="relative inline-block text-left" ref={menuRef}>
               <div
                 className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
                 onClick={() => setShowMenu((prev) => !prev)}
@@ -181,14 +205,16 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xl font-semibold text-gray-700">{customer.title}</h2>
-                  <span className="text-sm text-gray-400">
-                    {new Date(customer.createdTime).toLocaleDateString('en-GB')}
-                  </span>
+                  
                 </div>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <p><strong>Email:</strong> {customer.email || 'Not set'}</p>
                   <p><strong>Country:</strong> {customer.country || 'Not set'}</p>
                   <p><strong>City:</strong> {customer.city || 'Not set'}</p>
+                  <p><strong>Created On: </strong> 
+                  <span className="ml-2">
+                    {new Date(customer.createdTime).toLocaleDateString('en-GB')}
+                  </span>
+                  </p>
                 </div>
 
                 <div className="mt-4 flex justify-between items-center text-gray-600">
@@ -206,8 +232,8 @@ export default function AdminDashboard() {
                       <TbDeviceDesktopPlus className="hover:text-indigo-500 cursor-pointer" title="Add Device" />
                     </button>
                   </div>
-                  <button onClick={() => handleDeleteCustomer(customer.id.id)}>
-                    <FiTrash className="text-red-500 hover:text-red-700 text-xl" title="Delete Customer" />
+                  <button onClick={() => { setSelectedCustomerId(customer.id.id); setIsDeleteCustomer(true); }}>
+                    <FiTrash className="text-red-500 hover:text-red-700 text-xl cursor-pointer" title="Delete Customer" />
                   </button>
                 </div>
               </div>
@@ -217,13 +243,20 @@ export default function AdminDashboard() {
             <button
               onClick={() => setShowAddModal(true)}
               type="button"
-              className="flex flex-col items-center justify-center min-h-[220px] bg-blue-50 border-2 border-dashed border-blue-400 rounded-xl hover:bg-blue-100 transition"
+              className="flex flex-col items-center justify-center min-h-[180px] bg-blue-50 border-2 border-dashed border-blue-400 rounded-xl hover:bg-blue-100 transition"
             >
               <FiPlus className="text-4xl text-blue-600 mb-2" />
               <span className="font-medium text-blue-600">Add Customer</span>
             </button>
           </div>
 
+          {isDeleteCustomer && (
+            <DeletePopup
+              onConfirm={() => {setDeleting(true); handleDeleteCustomer(selectedCustomerId)}}
+              onCancel={() => setIsDeleteCustomer(false)}
+              deleting={deleting}
+            />
+          )}
 
           {/* Modal for Add Customer */}
           {showAddModal && (
