@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState ,useEffect} from 'react';
 
 export default function ChangePasswordModal({ onClose }) {
     const [currentPassword, setCurrentPassword] = useState('');
@@ -41,6 +41,15 @@ export default function ChangePasswordModal({ onClose }) {
             setLoading(false);
         }
     };
+    useEffect(() => {
+        function handleKeyDown(event) {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, [onClose]);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center px-2">

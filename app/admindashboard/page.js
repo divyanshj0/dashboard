@@ -5,6 +5,7 @@ import UserListModal from '@/components/UserListModal';
 import DeviceListModal from '@/components/DeviceListModal';
 import AddDeviceModal from '@/components/AddDeviceModal';
 import DeletePopup from '@/components/deletepopup';
+import ChangePasswordModal from '@/components/changePasswordModal';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState,useRef } from 'react';
 import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
