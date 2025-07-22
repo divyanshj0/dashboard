@@ -18,12 +18,12 @@ export default function AddCustomerModal({ form, onChange, onClose, save, onSubm
         <form className="space-y-4">
           {['name', 'city', 'state', 'country'].map(field => (
             <div key={field}>
-              <label className="block text-sm font-medium mb-1 text-gray-600 capitalize">{field}</label>
               <input
                 type='text'
                 value={form[field]}
+                placeholder={`${field}*`}
                 onChange={(e) => onChange(field, e.target.value)}
-                className="w-full p-2 border rounded focus:outline-blue-500"
+                className="w-full p-2 border border-gray-300 rounded focus:outline-blue-500"
                 required
               />
             </div>

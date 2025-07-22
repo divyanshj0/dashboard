@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 const TB_URL = 'https://demo.thingsboard.io';
 
 export async function POST(req) {
-  const { token, devices, userId } = await req.json();
+  const { token, userId } = await req.json();
 
-  if (!token || !devices || !Array.isArray(devices)) {
-    return NextResponse.json({ error: 'missing token/devices' }, { status: 500 });
+  if (!token) {
+    return NextResponse.json({ error: 'missing token' }, { status: 500 });
   }
 
   try {

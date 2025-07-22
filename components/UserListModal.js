@@ -1,8 +1,8 @@
-import { FiTrash,FiRefreshCw } from 'react-icons/fi';
+import { FiTrash, FiRefreshCw } from 'react-icons/fi';
 import { MdDashboardCustomize } from "react-icons/md";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onAddDashboard }) {
+export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onCreateDashboard }) {
   const router = useRouter();
   useEffect(() => {
     function handleKeyDown(event) {
@@ -14,7 +14,8 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const handleCreateDashboard = (userId,userName) => {
+  const handleCreateDashboard = async (userId, userName) => {
+    onCreateDashboard();
     if (userName) {
       router.push(`/${userName}/dashboard/${userId}`);
     }
@@ -25,7 +26,7 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
         <button onClick={onClose} className="absolute right-4 top-4 text-3xl cursor-pointer hover:text-red-600 hover:scale-105">&times;</button>
         <div className='flex gap-5 items-center mb-4'>
           <h2 className="text-xl font-semibold  text-blue-700">Users for Customer</h2>
-          <button onClick={onRefresh} className="p-1 hover:bg-gray-300 cursor-pointer hover:scale-105 text-black rounded"><FiRefreshCw  size={20}/></button>
+          <button onClick={onRefresh} className="p-1 hover:bg-gray-300 cursor-pointer hover:scale-105 text-black rounded"><FiRefreshCw size={20} /></button>
         </div>
         {loading && <p className="text-gray-500">Loading users...</p>}
         {!loading && users.length === 0 && (
@@ -40,14 +41,14 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
                 <div className='flex items-center gap-5'>
-                  <button onClick={() => handleCreateDashboard(user.id.id,user.firstName+user.lastName)} className="text-gray-400 hover:text-gray-800" title='create Dashboard'><MdDashboardCustomize size={20}/></button>
-                  <button onClick={() => onDelete(user.id.id)} className="text-red-400 hover:text-red-700"><FiTrash size={20}/></button>
+                  <button onClick={() => handleCreateDashboard(user.id.id, user.firstName + user.lastName)} className="text-gray-400 hover:text-gray-800" title='create Dashboard'><MdDashboardCustomize size={20} /></button>
+                  <button onClick={() => onDelete(user.id.id)} className="text-red-400 hover:text-red-700"><FiTrash size={20} /></button>
                 </div>
               </li>
             ))}
           </ul>
         )}
-    
+
       </div>
     </div>
   );

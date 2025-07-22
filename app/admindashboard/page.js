@@ -149,6 +149,16 @@ export default function AdminDashboard() {
     setCustomerDevices(data.devices || []);
     setLoadingModal(false);
   };
+  const fetchDev=async(token,customerId)=>{
+    const res = await fetch('/api/thingsboard/devices', {
+          method: 'POST',
+          body: JSON.stringify({ customerId: customerId, token: token }),
+        })
+        const devdata = await res.json()
+        if (!res.ok) throw new Error(devdata.error)
+        localStorage.setItem('tb_devices', JSON.stringify(devdata.devices));
+
+  }
 
   const handleDeleteUser = async (userId) => {
     await fetch('/api/thingsboard/deleteUser', {
@@ -159,10 +169,6 @@ export default function AdminDashboard() {
     setDeleting(false);
     setIsDeleteCustomer(false);
   };
-
-  const handleAddDashboard=(userId)=>{
-
-  }
 
   const handleLogout = () => {
     localStorage.clear();
@@ -292,7 +298,7 @@ export default function AdminDashboard() {
                 await fetchUser(token, selectedCustomerId);
               }}
               onDelete={handleDeleteUser}
-              onAddDashboard={handleAddDashboard}
+              onCreateDashboard={()=>{fetchDev(token,selectedCustomerId)}}
             />
           )}
           {showAddUserModal && (

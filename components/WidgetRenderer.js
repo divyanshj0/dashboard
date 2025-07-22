@@ -23,7 +23,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
   useEffect(() => {
     const fetchTimeSeriesForAllWidgets = async () => {
       const result = {};
-
+      const startTs=Date.now();
+      const endTs=Date.now()-1000*60*60*24;
       for (const widget of config.widgets) {
         const parameters = widget.parameters || [];
         for (const param of parameters) {
@@ -41,9 +42,6 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 deviceId: param.deviceId,
                 key: param.key,
                 limit: 100,
-                startTs: 1751923200000,
-                endTs: 1753113599000,
-                interval: 60000,
               }),
             });
 

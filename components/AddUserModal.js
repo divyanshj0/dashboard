@@ -24,7 +24,7 @@ export default function AddUserModal({ user, onChange, onSubmit, save, onClose }
               value={user[field]}
               onChange={(e) => onChange(field, e.target.value)}
               required
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-400"
             />
           ))}
 
