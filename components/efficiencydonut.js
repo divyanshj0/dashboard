@@ -19,7 +19,7 @@ const Efficiency = ({ series = [], label = "" }) => {
   ];
 
   return (
-    <div className="h-full w-full bg-white flex flex-col justify-center items-center rounded-md shadow-md">
+    <div className="h-full w-full bg-white flex flex-col justify-center items-center  border-gray-200 rounded-md shadow-sm">
       <div className="text-lg font-medium mt-2 px-2 text-center">% {label}</div>
       <div className="w-[120px] h-[120px] relative">
         <ResponsiveContainer width="100%" height="100%">

@@ -215,7 +215,8 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-          </div>
+        </div>
+        <div className='min-h-[74vh]'>
           <h1 className="text-3xl font-bold my-6 text-gray-800">Admin Dashboard</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {customers.map((customer) => (
@@ -269,75 +270,75 @@ export default function AdminDashboard() {
               <span className="font-medium text-blue-600">Add Customer</span>
             </button>
           </div>
-
-          {isDeleteCustomer && (
-            <DeletePopup
-              onConfirm={() => {setDeleting(true); handleDeleteCustomer(selectedCustomerId)}}
-              onCancel={() => setIsDeleteCustomer(false)}
-              deleting={deleting}
-            />
-          )}
-
-          {/* Modal for Add Customer */}
-          {showAddModal && (
-            <AddCustomerModal
-              form={addCustomerForm}
-              onChange={(field, value) => setAddCustomerForm((f) => ({ ...f, [field]: value }))}
-              onClose={() => setShowAddModal(false)}
-              save={save}
-              onSubmit={() => { handleAddCustomerForm(); setSave(true); }}
-            />
-          )}
-
-          {showUserModal && (
-            <UserListModal
-              users={customerUsers}
-              loading={loadingModal}
-              onClose={() => setShowUserModal(false)}
-              onRefresh={async () => {
-                await fetchUser(token, selectedCustomerId);
-              }}
-              onDelete={handleDeleteUser}
-              onCreateDashboard={()=>{fetchDev(token,selectedCustomerId)}}
-            />
-          )}
-          {showAddUserModal && (
-            <AddUserModal
-              user={newUser}
-              onChange={(field, value) => setNewUser((u) => ({ ...u, [field]: value }))}
-              onSubmit={() => { handleAddUser(); setSave(true); }}
-              save={save}
-              onClose={() => setShowAddUserModal(false)}
-            />
-          )}
-          {showDeviceModal && (
-            <DeviceListModal
-              devices={customerDevices}
-              loading={loadingModal}
-              onClose={() => setShowDeviceModal(false)}
-              onRefresh={async () => {
-                await fetchDevices(token, selectedCustomerId);
-              }}
-            />
-          )}
-          {showAddDeviceModal && (
-            <AddDeviceModal
-              device={newDevice}
-              onChange={(field, value) => setNewDevice((d) => ({ ...d, [field]: value }))}
-              onSubmit={() => { handleAddDevice(); setSave(true); }}
-              save={save}
-              onClose={() => setShowAddDeviceModal(false)}
-            />
-          )}
-          {showChangePassword && (
-            <ChangePasswordModal
-              onClose={() => setShowChangePassword(false)}
-            />
-          )}
-          <div className="bg-blue-100 text-center mt-4 py-4 rounded-md">
-            <p className="text-lg text-black">© 2025 All rights reserved. Developed and managed by TheElitePro</p>
-          </div>
         </div>
-      </>
-      );
+        {isDeleteCustomer && (
+          <DeletePopup
+            onConfirm={() => { setDeleting(true); handleDeleteCustomer(selectedCustomerId) }}
+            onCancel={() => setIsDeleteCustomer(false)}
+            deleting={deleting}
+          />
+        )}
+
+        {/* Modal for Add Customer */}
+        {showAddModal && (
+          <AddCustomerModal
+            form={addCustomerForm}
+            onChange={(field, value) => setAddCustomerForm((f) => ({ ...f, [field]: value }))}
+            onClose={() => setShowAddModal(false)}
+            save={save}
+            onSubmit={() => { handleAddCustomerForm(); setSave(true); }}
+          />
+        )}
+
+        {showUserModal && (
+          <UserListModal
+            users={customerUsers}
+            loading={loadingModal}
+            onClose={() => setShowUserModal(false)}
+            onRefresh={async () => {
+              await fetchUser(token, selectedCustomerId);
+            }}
+            onDelete={handleDeleteUser}
+            onCreateDashboard={() => { fetchDev(token, selectedCustomerId) }}
+          />
+        )}
+        {showAddUserModal && (
+          <AddUserModal
+            user={newUser}
+            onChange={(field, value) => setNewUser((u) => ({ ...u, [field]: value }))}
+            onSubmit={() => { handleAddUser(); setSave(true); }}
+            save={save}
+            onClose={() => setShowAddUserModal(false)}
+          />
+        )}
+        {showDeviceModal && (
+          <DeviceListModal
+            devices={customerDevices}
+            loading={loadingModal}
+            onClose={() => setShowDeviceModal(false)}
+            onRefresh={async () => {
+              await fetchDevices(token, selectedCustomerId);
+            }}
+          />
+        )}
+        {showAddDeviceModal && (
+          <AddDeviceModal
+            device={newDevice}
+            onChange={(field, value) => setNewDevice((d) => ({ ...d, [field]: value }))}
+            onSubmit={() => { handleAddDevice(); setSave(true); }}
+            save={save}
+            onClose={() => setShowAddDeviceModal(false)}
+          />
+        )}
+        {showChangePassword && (
+          <ChangePasswordModal
+            onClose={() => setShowChangePassword(false)}
+          />
+        )}
+        <div className="bg-blue-100 text-center mt-4 py-4 rounded-md">
+          <p className="text-lg text-black">© 2025 All rights reserved. Developed and managed by TheElitePro</p>
+        </div>
+      </div>
+    </>
+  );
 }

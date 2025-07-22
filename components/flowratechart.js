@@ -37,7 +37,7 @@ export default function FlowRateChart({ view }) {
   const miniData = data.slice(-12);
 
   const Chart = ({ chartData, fullView }) => (
-    <ResponsiveContainer width="100%" height={fullView ? 300 : 150}>
+    <ResponsiveContainer width="95%" height={fullView ? "90%" : "80%"}>
       <LineChart data={chartData}>
         <XAxis dataKey={xKey} padding={{ right: 20 }} />
         <YAxis>
@@ -70,7 +70,7 @@ export default function FlowRateChart({ view }) {
       <Chart chartData={miniData} fullView={false} />
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center px-2">
+        <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center px-2">
           <div className="bg-white p-6 rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto shadow-lg">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Full Water Flow Rate Chart</h2>
