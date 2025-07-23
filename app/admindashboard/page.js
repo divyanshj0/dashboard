@@ -1,3 +1,4 @@
+// app/admindashboard/page.js
 'use client';
 import AddUserModal from '@/components/AddUserModal';
 import AddCustomerModal from '@/components/AddCustomerModal';
@@ -11,6 +12,7 @@ import { useEffect, useState,useRef } from 'react';
 import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
 import { TbDeviceDesktopPlus } from "react-icons/tb";
 import { FaKey } from 'react-icons/fa6';
+import EditDeviceModal from '@/components/editdevicemodal';
 export default function AdminDashboard() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -20,8 +22,9 @@ export default function AdminDashboard() {
   const [customerUsers, setCustomerUsers] = useState([]);
   const [customerDevices, setCustomerDevices] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [device, setDevice] = useState({}); // This will store the full device object for editing
   const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '' });
-  const [newDevice, setNewDevice] = useState({ name: '', label: '' });
+  const [newDevice, setNewDevice] = useState({ name: '', label: '', clientId: '', username: '', password: '' });
   const [loading, setLoading] = useState(true);
   const [save,setSave]= useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
@@ -31,6 +34,7 @@ export default function AdminDashboard() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddDeviceModal, setShowAddDeviceModal] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false)
   const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: ''});
   const [isDeleteCustomer, setIsDeleteCustomer] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -121,14 +125,52 @@ export default function AdminDashboard() {
         token,
         customerId: selectedCustomerId,
         name: newDevice.name,
-        label: newDevice.label
+        label: newDevice.label,
+        clientId: newDevice.clientId,
+        username: newDevice.username,
+        password: newDevice.password
       }),
     });
-    setNewDevice({ name: '', label: '' });
+    setNewDevice({ name: '', label: '', clientId: '', username: '', password: '' });
     setSave(false);
     alert('Device added successfully');
     setShowAddDeviceModal(false);
   };
+
+  const handleEditDevice = async (updatedFields) => {
+    setSave(true);
+    try {
+      const res = await fetch('/api/thingsboard/updatedevice', {
+        method: 'POST', // Use PUT for updating
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          customerId:selectedCustomerId,
+          deviceId: device.id.id,
+          name: updatedFields.name,
+          label: updatedFields.label,
+          clientId: updatedFields.clientId,
+          username: updatedFields.username,
+          password: updatedFields.password,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update device');
+      }
+
+      alert('Device updated successfully!');
+      setShowEditModal(false);
+      await fetchDevices(token, selectedCustomerId);
+    } catch (err) {
+      console.error('Error updating device:', err);
+      alert('Failed to update device: ' + err.message);
+    } finally {
+      setSave(false);
+    }
+  };
+
   const fetchUser = async (token, customerId) => {
     setShowUserModal(true);
     const res = await fetch('/api/thingsboard/getcustomeruser', {
@@ -319,6 +361,11 @@ export default function AdminDashboard() {
             onRefresh={async () => {
               await fetchDevices(token, selectedCustomerId);
             }}
+            onEdit={(deviceToEdit) => {
+              setShowDeviceModal(false);
+              setShowEditModal(true)
+              setDevice(deviceToEdit);
+            }}
           />
         )}
         {showAddDeviceModal && (
@@ -335,6 +382,18 @@ export default function AdminDashboard() {
             onClose={() => setShowChangePassword(false)}
           />
         )}
+        {
+          showEditModal && (
+            <EditDeviceModal
+              device={device} // Pass the full device object to the modal
+              loading={loadingModal}
+              onSubmit={(updatedFields) => { handleEditDevice(updatedFields); }} // Pass the updated fields from modal to handler
+              save={save}
+              onClose={() => setShowEditModal(false)}
+            />
+          )
+        }
+
         <div className="bg-blue-100 text-center mt-4 py-4 rounded-md">
           <p className="text-lg text-black">© 2025 All rights reserved. Developed and managed by TheElitePro</p>
         </div>
