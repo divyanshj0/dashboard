@@ -23,8 +23,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
   useEffect(() => {
     const fetchTimeSeriesForAllWidgets = async () => {
       const result = {};
-      const startTs=Date.now();
-      const endTs=Date.now()-1000*60*60*24;
+      const endTs = Date.now(); // Current timestamp
+      const startTs = endTs - (1000 * 60 * 60 * 24 * 7); // 7 days ago
       for (const widget of config.widgets) {
         const parameters = widget.parameters || [];
         for (const param of parameters) {
@@ -41,7 +41,9 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 token,
                 deviceId: param.deviceId,
                 key: param.key,
-                limit: 100,
+                limit: 1000,
+                startTs: startTs,
+                endTs: endTs,
               }),
             });
 
@@ -49,9 +51,9 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
 
             result[compositeKey] = Array.isArray(data[param.key])
               ? data[param.key].map((item) => ({
-                  ts: Number(item.ts),
-                  value: parseFloat(item.value),
-                }))
+                ts: Number(item.ts),
+                value: parseFloat(item.value),
+              }))
               : [];
           } catch (error) {
             console.error(`Failed to fetch data for ${compositeKey}`, error);

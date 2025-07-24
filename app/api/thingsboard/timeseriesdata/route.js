@@ -2,7 +2,7 @@
     const TB_BASE_URL = 'https://demo.thingsboard.io';
     export async function POST(req) {
     try {
-        const {token, deviceId, key, limit = 50, startTs, endTs, interval} = await req.json();
+        const {token, deviceId, key, limit, startTs, endTs} = await req.json();
         if (!token || !deviceId || !key) {
         return NextResponse.json({ error: 'Missing required fields: token, deviceId, or key' }, { status: 400 });
         }
@@ -12,11 +12,9 @@
         params.append('keys', key);
         if (limit) params.append('limit', limit);
         if (startTs) params.append('startTs', startTs);
-        if (endTs) params.append('endTs', endTs);
-        if (interval) params.append('interval', interval); // e.g. 60000 ms for 1-minute aggregation
+        if (endTs) params.append('endTs', endTs); 
 
         const url = `${TB_BASE_URL}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?${params.toString()}`;
-        console.log('Fetching telemetry data from:', url);
         const res = await fetch(url, {
         method: 'GET',
         headers: {
