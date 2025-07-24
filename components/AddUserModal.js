@@ -30,7 +30,7 @@ export default function AddUserModal({ user, onChange, onSubmit, save, onClose }
 
           <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-            <button type="submit" className={`px-4 py-2 bg-blue-600 text-white rounded ${save ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={save}>
+            <button type="submit" onClick={onSubmit} className={`px-4 py-2 bg-blue-600 text-white rounded ${save ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={save}>
               {save ? 'Saving...' : 'Save'}
             </button>
           </div>

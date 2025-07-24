@@ -11,11 +11,14 @@ export async function POST(req) {
       'X-Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
-      authority: 'CUSTOMER_USER',
-      customerId,
-      email,
-      firstName,
-      lastName,
+      customerId: {
+        id: customerId,
+        entityType: "CUSTOMER"
+      },
+      email: email,
+      authority: "CUSTOMER_USER",
+      firstName:  firstName,
+      lastName: lastName,
     }),
   });
 

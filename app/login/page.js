@@ -22,7 +22,10 @@ export default function LoginPage() {
       })
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) {
+        setLoading(false);
+        throw new Error(data.error);
+      }
 
       // Store token in localStorage/sessionStorage/cookie as needed
       localStorage.setItem('tb_token', data.token)
