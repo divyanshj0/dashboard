@@ -96,9 +96,13 @@ export default function ChemicalChart({ title = "", series = [], saveLayout }) {
         <XAxis dataKey="ts"
           tickFormatter={(ts) => {
             const date = new Date(ts);
-            return view === 'hourly'
-              ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
-              : date.toLocaleDateString('en-GB');
+            return date.toLocaleString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
           }} />
         <YAxis>
           <Label value={series[0]?.unit || 'Value'} angle={-90} offset={15} fontSize={20} position="insideLeft" />
@@ -118,20 +122,20 @@ export default function ChemicalChart({ title = "", series = [], saveLayout }) {
     <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm">
       <div className="flex items-center justify-between px-2 pt-1">
         <p className="text-lg font-medium">{title}</p>
-        <div className={`${saveLayout ? 'hidden' : 'flex gap-5'}`}>
+        <div className={`${saveLayout ? 'hidden' : 'flex gap-5'} pt-1`}>
           <select
             value={view}
             onChange={(e) => setView(e.target.value)}
-            className="border rounded p-1 text-sm"
+            className="border rounded p-2 text-sm"
           >
             <option value="hourly">Hourly (Last 1 Day)</option>
             <option value="weekly">Weekly (Last 7 Days)</option>
           </select>
           <button onClick={() => downloadCSV(chartData, title, view)} title="Download DataFile" className='cursor-pointer' >
-            <FaFileDownload />
+            <FaFileDownload size={20} />
           </button>
           <button onClick={() => setIsOpen(true)} title="fullscreen" className='cursor-pointer'>
-            <FiMaximize />
+            <FiMaximize size={20} />
           </button>
         </div>
       </div>

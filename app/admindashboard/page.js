@@ -13,6 +13,7 @@ import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-i
 import { TbDeviceDesktopPlus } from "react-icons/tb";
 import { FaKey } from 'react-icons/fa6';
 import EditDeviceModal from '@/components/editdevicemodal';
+import { toast } from 'react-toastify';
 export default function AdminDashboard() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -98,7 +99,7 @@ export default function AdminDashboard() {
     setAddCustomerForm({ name: '', city: '', state: '', country: ''});
     fetchCustomers(token);
     setSave(false);
-    alert('Customer added successfully');
+    toast.success('Customer added successfully');
     setShowAddModal(false);
   };
   const handleAddUser = async () => {
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
     });
     setNewUser({ email: '', firstName: '', lastName: '' });
     setSave(false);
-    alert('User added successfully');
+    toast.success('User added successfully');
     setShowAddUserModal(false);
   };
 
@@ -133,7 +134,7 @@ export default function AdminDashboard() {
     });
     setNewDevice({ name: '', label: '', clientId: '', username: '', password: '' });
     setSave(false);
-    alert('Device added successfully');
+    toast.success('Device added successfully');
     setShowAddDeviceModal(false);
   };
 
@@ -160,12 +161,11 @@ export default function AdminDashboard() {
         throw new Error(errorData.error || 'Failed to update device');
       }
 
-      alert('Device updated successfully!');
+      toast.success('Device updated successfully!');
       setShowEditModal(false);
       await fetchDevices(token, selectedCustomerId);
     } catch (err) {
-      console.error('Error updating device:', err);
-      alert('Failed to update device: ' + err.message);
+      toast.error('Failed to update device: ' + err.message);
     } finally {
       setSave(false);
     }
@@ -210,6 +210,7 @@ export default function AdminDashboard() {
     fetchCustomers(token);
     setDeleting(false);
     setIsDeleteCustomer(false);
+    toast.success('User Deleted Successfully');
   };
 
   const handleLogout = () => {

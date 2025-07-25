@@ -8,6 +8,7 @@ import CreateDashboardModal from '@/components/CreateDashboardModal';
 import WidgetPlacementModal from '@/components/WidgetPlacementModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
+import { toast } from 'react-toastify';
 
 export default function DashboardPage({ params }) {
   const { username, userId } = params;
@@ -23,9 +24,9 @@ export default function DashboardPage({ params }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showUpdateData, setShowUpdateData] = useState(false);
   const [token, setToken] = useState('');
-  const [saveLayout, setSaveLayout] = useState(false); // edit mode
+  const [saveLayout, setSaveLayout] = useState(false);
   const [save, setSave] = useState(false);
-  const lastUpdated = '10 July 2025';
+  const [latestTelemetryTime, setLatestTelemetryTime] = useState(null); 
   const status = 'Normal';
   const menuRef = useRef(null);
 
@@ -84,7 +85,6 @@ export default function DashboardPage({ params }) {
 
   const handleSaveLayout = async (newLayout) => {
     const token = localStorage.getItem('tb_token');
-    const userId = localStorage.getItem('tb_userId');
 
     const updatedConfig = {
       ...config,
@@ -104,11 +104,12 @@ export default function DashboardPage({ params }) {
       if (res.ok) {
         setConfig(updatedConfig);
         setLayout(newLayout);
+        toast.success('Layout saved Succesfully!!')
       } else {
-        console.error('Failed to save layout config');
+        toast.error('Failed to save layout config');
       }
     } catch (err) {
-      console.error('Layout save error:', err);
+      toast.error('Layout save error:', err);
     }
   };
   const handleSaveConfig = async (newConfig) => {
@@ -127,13 +128,26 @@ export default function DashboardPage({ params }) {
       if (res.ok) {
         setConfig(newConfig);
       } else {
-        console.error('Failed to save config');
+        toast.error('Failed to save config');
       }
     } catch (err) {
-      console.error('Config save error:', err);
+      toast.error('Config save error:', err);
     }
   };
 
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  };
 
   const dotClass = clsx('h-3 w-3 rounded-full', 'bg-green-500');
   const textClass = clsx('text-lg font-medium', 'text-green-500');
@@ -155,7 +169,7 @@ export default function DashboardPage({ params }) {
             <span className="text-xl md:text-2xl font-semibold">Water Monitoring Dashboard</span>
             <div className={`hidden ${!config || config.widgets.length === 0 ? '' : 'md:flex'} gap-2 items-center`}>
               <p className="text-md font-medium">Last Updated</p>
-              <span>{lastUpdated}</span>
+              <span>{formatTimestamp(latestTelemetryTime)}</span>
             </div>
           </div>
           {/* Desktop Options */}
@@ -274,7 +288,7 @@ export default function DashboardPage({ params }) {
               </div>
               <div className={`${!config || config.widgets.length === 0 ? 'hidden' : ''}`}>
                 <p className="font-medium">Last Updated</p>
-                <p>{lastUpdated}</p>
+                <span>{formatTimestamp(latestTelemetryTime)}</span> 
               </div>
             </div>
           </div>
@@ -292,7 +306,14 @@ export default function DashboardPage({ params }) {
           </div>
         ) : (
           <div className="mt-4 px-4 min-h-[74vh] flex flex-col justify-between">
-            <WidgetRenderer config={config} layout={saveLayout ? (draftLayout ?? layout) : layout} onLayoutSave={(newLayout) => setDraftLayout(newLayout)} saveLayout={saveLayout} token={token} />
+            <WidgetRenderer
+              config={config}
+              layout={saveLayout ? (draftLayout ?? layout) : layout}
+              onLayoutSave={(newLayout) => setDraftLayout(newLayout)}
+              saveLayout={saveLayout}
+              token={token}
+              onLatestTimestampChange={setLatestTelemetryTime}
+            />
             <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

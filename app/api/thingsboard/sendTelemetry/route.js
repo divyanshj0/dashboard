@@ -4,10 +4,10 @@ import { NextResponse } from 'next/server';
 const TB_BASE_URL = 'https://demo.thingsboard.io';
 
 export async function POST(req) {
-  const { token, deviceId, key, value } = await req.json();
+  const { token, deviceId, telemetryData } = await req.json();
 
-  if (!token || !deviceId || !key || value === undefined) {
-    return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+  if (!token || !deviceId || !telemetryData || typeof telemetryData !== 'object' || Object.keys(telemetryData).length === 0) {
+    return NextResponse.json({ error: 'Missing required data: token, deviceId, or telemetryData' }, { status: 400 });
   }
 
   try {
@@ -17,7 +17,7 @@ export async function POST(req) {
         'Content-Type': 'application/json',
         'X-Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ [key]: value }),
+      body: JSON.stringify(telemetryData),
     });
 
     if (!res.ok) {
@@ -28,6 +28,6 @@ export async function POST(req) {
     return NextResponse.json({ message: 'Telemetry sent successfully' });
   } catch (error) {
     console.error('Telemetry POST error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
   }
 }

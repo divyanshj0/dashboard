@@ -13,18 +13,17 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
-
-export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token }) {
+export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token, onLatestTimestampChange }) {
   const [timeSeries, setTimeSeries] = useState({});
 
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
 
-  // Fetch time-series data on mount
   useEffect(() => {
     const fetchTimeSeriesForAllWidgets = async () => {
       const result = {};
-      const endTs = Date.now(); // Current timestamp
-      const startTs = endTs - (1000 * 60 * 60 * 24 * 7); // 7 days ago
+      const endTs = Date.now();
+      const startTs = endTs - (1000 * 60 * 60 * 24 * 7);
+      let latestOverallTs = 0;
       for (const widget of config.widgets) {
         const parameters = widget.parameters || [];
         for (const param of parameters) {
@@ -41,7 +40,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 token,
                 deviceId: param.deviceId,
                 key: param.key,
-                limit: 1000,
+                limit: 10000,
                 startTs: startTs,
                 endTs: endTs,
               }),
@@ -49,12 +48,23 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
 
             const data = await res.json();
 
-            result[compositeKey] = Array.isArray(data[param.key])
+            const fetchedData = Array.isArray(data[param.key])
               ? data[param.key].map((item) => ({
-                ts: Number(item.ts),
-                value: parseFloat(item.value),
-              }))
+                  ts: Number(item.ts),
+                  value: parseFloat(item.value),
+                }))
               : [];
+
+            result[compositeKey] = fetchedData;
+
+            // Update latestOverallTs if a newer timestamp is found
+            if (fetchedData.length > 0) {
+              const currentLatest = Math.max(...fetchedData.map(d => d.ts));
+              if (currentLatest > latestOverallTs) {
+                latestOverallTs = currentLatest;
+              }
+            }
+
           } catch (error) {
             console.error(`Failed to fetch data for ${compositeKey}`, error);
             result[compositeKey] = [];
@@ -63,16 +73,19 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
       }
 
       setTimeSeries(result);
+      if (onLatestTimestampChange && latestOverallTs > 0) {
+        onLatestTimestampChange(latestOverallTs);
+      }
     };
 
     fetchTimeSeriesForAllWidgets();
-  }, [config, token]);
+  }, [config, token, onLatestTimestampChange]);
 
   // Helpers
   const getValue = (key, deviceId) => {
     const flatKey = `${deviceId}_${key}`;
-    const point = timeSeries[flatKey]?.[timeSeries[flatKey].length - 1];
-    return point ? point.value : null;
+    const points = timeSeries[flatKey] || [];
+    return points.length > 0 ? points[points.length - 1].value : null;
   };
 
   const getSeriesData = (key, deviceId) => {
@@ -90,7 +103,6 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
       isDraggable={saveLayout}
       isResizable={saveLayout}
       onLayoutChange={(newLayout) => {
-        // Only update layout when in edit mode
         if (!saveLayout) return;
         if (onLayoutSave) onLayoutSave(newLayout);
       }}

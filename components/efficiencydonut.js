@@ -21,13 +21,13 @@ const Efficiency = ({ series = [], label = "" }) => {
   return (
     <div className="h-full w-full bg-white flex flex-col justify-center items-center  border-gray-200 rounded-md shadow-sm">
       <div className="text-lg font-medium mt-2 px-2 text-center">% {label}</div>
-      <div className="w-[120px] h-[120px] relative">
+      <div className="h-[80%] min-h-[120px]  max-h-[200px] w-[80%] min-w-[120px] max-w-[200px] relative">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             cx="50%"
             cy="50%"
-            innerRadius="60%"
-            outerRadius="80%"
+            innerRadius="70%"
+            outerRadius="90%"
             barSize={15}
             data={chartData}
             startAngle={90}

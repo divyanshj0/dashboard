@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify'; 
 
 export default function DataUpdate({ onClose }) {
     const [token, setToken] = useState('');
@@ -80,45 +81,65 @@ export default function DataUpdate({ onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        let successCount = 0;
-        let failCount = 0;
+        const telemetryByDevice = new Map(); 
 
+        let validationError = false;
         for (const entry of telemetryEntries) {
             const keyToSend = entry.selectedKey === 'custom' ? entry.customKey.trim() : entry.selectedKey;
 
             if (!entry.deviceId || !keyToSend || entry.value === '') {
-                alert(`Skipping invalid entry: Device, Key, and Value are required for each row.`);
-                failCount++;
-                continue;
+                toast.info(`Validation Error: Device, Key, and Value are required for all entries. Please check entry with Device ID: ${entry.deviceId || 'N/A'}, Key: ${keyToSend || 'N/A'}`);
+                validationError = true;
+                break;
             }
+            const parsedValue = isNaN(Number(entry.value)) ? entry.value : Number(entry.value);
 
+            if (!telemetryByDevice.has(entry.deviceId)) {
+                telemetryByDevice.set(entry.deviceId, {});
+            }
+            telemetryByDevice.get(entry.deviceId)[keyToSend] = parsedValue;
+        }
+
+        if (validationError) {
+            setLoading(false);
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        const failedDevices = [];
+
+        for (const [deviceId, telemetryData] of telemetryByDevice.entries()) {
             try {
                 const response = await fetch('/api/thingsboard/sendTelemetry', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, deviceId: entry.deviceId, key: keyToSend, value: entry.value })
+                    body: JSON.stringify({ token, deviceId, telemetryData })
                 });
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(`Failed for ${entry.deviceId}/${keyToSend}: ${errorText}`);
+                    throw new Error(`Failed for device ${deviceId}: ${errorText}`);
                 }
                 successCount++;
             } catch (err) {
                 console.error(err);
                 failCount++;
+                failedDevices.push(deviceId);
             }
         }
 
         setLoading(false);
         if (successCount > 0) {
-            alert(`✅ Sent ${successCount} telemetry entries successfully!`);
+            toast.success(`Sent telemetry for ${successCount} device(s) successfully!`);
         }
         if (failCount > 0) {
-            alert(`❌ Failed to send ${failCount} telemetry entries.`);
+            toast.error(`Failed to send telemetry for ${failCount} device(s): ${failedDevices.join(', ')}.`)
         }
-        // Reset form after submission
-        setTelemetryEntries([{ id: Date.now(), deviceId: '', selectedKey: '', customKey: '', value: '' }]);
+        
+        if (successCount > 0 || failCount === 0) {
+             setTelemetryEntries([{ id: Date.now(), deviceId: '', selectedKey: '', customKey: '', value: '' }]);
+        }
     };
 
     return (
@@ -154,7 +175,10 @@ export default function DataUpdate({ onClose }) {
                                 <select
                                     className="w-full border p-2 rounded mt-1"
                                     value={entry.deviceId}
-                                    onChange={e => updateEntry(entry.id, 'deviceId', e.target.value)}
+                                    onChange={e => {
+                                        updateEntry(entry.id, 'deviceId', e.target.value);
+                                        // fetchKeys is already called by updateEntry when deviceId changes
+                                    }}
                                 >
                                     <option value="">-- Select Device --</option>
                                     {devices.map((d) => (

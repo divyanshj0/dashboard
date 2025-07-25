@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [token, setToken] = useState('');
   const [saveLayout, setSaveLayout] = useState(false); // edit mode
   const [save, setSave] = useState(false);
-  const lastUpdated = '10 July 2025';
+  const [latestTelemetryTime, setLatestTelemetryTime] = useState(null);
   const status = 'Normal';
   const menuRef = useRef(null);
 
@@ -141,7 +141,20 @@ export default function Dashboard() {
     }
   };
 
-      
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  };
+
   const dotClass = clsx('h-3 w-3 rounded-full', 'bg-green-500');
   const textClass = clsx('text-lg font-medium', 'text-green-500');
 
@@ -162,7 +175,7 @@ export default function Dashboard() {
             <span className="text-xl md:text-2xl font-semibold">Water Monitoring Dashboard</span>
             <div className={`hidden ${!config || config.widgets.length === 0 ? '' : 'md:flex'} gap-2 items-center`}>
               <p className="text-md font-medium">Last Updated</p>
-              <span>{lastUpdated}</span>
+              <span>{formatTimestamp(latestTelemetryTime)}</span>
             </div>
           </div>
           {/* Desktop Options */}
@@ -289,7 +302,7 @@ export default function Dashboard() {
               </div>
               <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
                 <p className="font-medium">Last Updated</p>
-                <p>{lastUpdated}</p>
+                <span>{formatTimestamp(latestTelemetryTime)}</span>
               </div>
             </div>
           </div>
@@ -307,7 +320,14 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="mt-4 px-4 min-h-[74vh] flex flex-col justify-between">
-            <WidgetRenderer config={config} layout={saveLayout ? (draftLayout ?? layout) : layout} onLayoutSave={(newLayout) => setDraftLayout(newLayout)} saveLayout={saveLayout} token={token} />
+            <WidgetRenderer
+              config={config}
+              layout={saveLayout ? (draftLayout ?? layout) : layout}
+              onLayoutSave={(newLayout) => setDraftLayout(newLayout)}
+              saveLayout={saveLayout}
+              token={token}
+              onLatestTimestampChange={setLatestTelemetryTime} // Pass the setter function
+            />
             <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
