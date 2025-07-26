@@ -21,9 +21,9 @@ export async function POST(req) {
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`Error fetching users: ${res.status} ${res.statusText}`);
+        console.error(`Error fetching users from customer: ${res.status} ${res.statusText}`);
         console.error('Response body:', errorText);
-        throw new Error(`Failed to fetch users: ${res.status} ${res.statusText}`);
+        throw new Error(`Failed to fetch users from customer: ${res.status} ${res.statusText}`);
       }
 
       const data = await res.json();
@@ -32,9 +32,33 @@ export async function POST(req) {
       page++;
     }
 
-    return NextResponse.json(allUsers);
+    // Now, for each user, fetch their detailed info to get the 'enabled' status
+    const usersWithStatus = await Promise.all(
+      allUsers.map(async (user) => {
+        try {
+          const userDetailRes = await fetch(`${TB}/api/user/${user.id.id}`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (!userDetailRes.ok) {
+            console.error(`Failed to fetch details for user ${user.id.id}: ${userDetailRes.status} ${userDetailRes.statusText}`);
+            return { ...user, enabled: true };
+          }
+          const userDetails = await userDetailRes.json();
+          return { ...user, enabled: userDetails.additionalInfo.userCredentialsEnabled};
+        } catch (detailError) {
+          console.error(`Exception fetching details for user ${user.id.id}:`, detailError);
+          return { ...user, enabled: false }; // Default to disabled on exception
+        }
+      })
+    );
+
+    return NextResponse.json(usersWithStatus);
   } catch (error) {
-    console.error('Exception:', error);
+    console.error('Exception in getcustomeruser:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

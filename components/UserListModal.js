@@ -1,8 +1,11 @@
 import { FiTrash, FiRefreshCw } from 'react-icons/fi';
 import { MdDashboardCustomize } from "react-icons/md";
+import { FaUserSlash ,FaUser} from "react-icons/fa";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onCreateDashboard }) {
+  console.log(users)
   const router = useRouter();
   useEffect(() => {
     function handleKeyDown(event) {
@@ -20,6 +23,33 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
       router.push(`/${userName}/dashboard/${userId}`);
     }
   };
+  const handleToggleUserStatus = async (userId, currentStatus) => {
+    try {
+      const token = localStorage.getItem('tb_token');
+      if (!token) {
+        toast.error('Authentication token not found.');
+        return;
+      }
+
+      const res = await fetch('/api/thingsboard/toggleUserStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, userId, enabled: !currentStatus }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to ${!currentStatus ? 'activate' : 'deactivate'} user.`);
+      }
+
+      onRefresh();
+      toast.success(data.message);
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      toast.error(error.message || 'Failed to change user status.'); 
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/70  flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
@@ -37,10 +67,18 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
             {users.map(user => (
               <li key={user.id.id} className="border p-3 rounded flex justify-between items-center">
                 <div>
-                  <p className="font-medium">{user.firstName} {user.lastName}</p>
+                  <p className="font-medium">{user.firstName} {user.lastName?user.lastName:''}</p>
                   <p className="text-sm text-gray-600">{user.email}</p>
+                  <p className="text-xs text-gray-500">Status: {user.enabled ? 'Active' : 'Inactive'}</p>
                 </div>
                 <div className='flex items-center gap-5'>
+                  <button
+                    onClick={() => handleToggleUserStatus(user.id.id, user.enabled)}
+                    className={` ${user.enabled ? 'text-red-400 hover:text-red-600' : 'text-green-400 hover:text-green-600'}`}
+                    title={user.enabled ? 'Deactivate User' : 'Activate User'}
+                  >
+                    {user.enabled ? <FaUserSlash size={24}/> : <FaUser size={24}/>}
+                  </button>
                   <button onClick={() => handleCreateDashboard(user.id.id, user.firstName + user.lastName)} className="text-gray-400 hover:text-gray-800" title='create Dashboard'><MdDashboardCustomize size={20} /></button>
                   <button onClick={() => onDelete(user.id.id)} className="text-red-400 hover:text-red-700"><FiTrash size={20} /></button>
                 </div>
@@ -48,7 +86,6 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
             ))}
           </ul>
         )}
-
       </div>
     </div>
   );

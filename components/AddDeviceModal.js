@@ -12,14 +12,8 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-
+  const isStep1Valid = device.name.trim() !== '' && device.label.trim() !== '';
   const handleSubmit = () => {
-    // Validate required fields in Step 1
-    if (!device.name || !device.label) {
-      alert("Please fill in required fields: Name & Label.");
-      return;
-    }
-    // Submit both Step 1 and Step 2 data
     onSubmit();
   };
 
@@ -97,15 +91,16 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
             <button
               type="button"
               onClick={() => setActiveStep(!activeStep)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200"
+              disabled={save ||!isStep1Valid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save|| !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {activeStep ? "Next" : "Back"}
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={save}
-              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={save ||!isStep1Valid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save|| !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {save ? "Saving..." : "Add"}
             </button>
