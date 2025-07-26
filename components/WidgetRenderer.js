@@ -1,3 +1,4 @@
+// divyanshj0/dashboard/dashboard-e0d67ddeb452132cdd921b4a298401b3e8890e7d/components/WidgetRenderer.js
 'use client';
 import { useEffect, useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
@@ -11,8 +12,11 @@ import ChemicalDosage from './chemicalDosage';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import ImageComponent from './Imagecomponent';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
+// const TB_URL = 'https://demo.thingsboard.io'; // No longer strictly needed if using publicLink
+
 export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token, onLatestTimestampChange }) {
   const [timeSeries, setTimeSeries] = useState({});
 
@@ -24,7 +28,13 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
       const endTs = Date.now();
       const startTs = endTs - (1000 * 60 * 60 * 24 * 7);
       let latestOverallTs = 0;
+
       for (const widget of config.widgets) {
+        // Skip fetching time series for image widgets
+        if (widget.type === 'image') {
+          continue;
+        }
+
         const parameters = widget.parameters || [];
         for (const param of parameters) {
           const compositeKey = `${param.deviceId}_${param.key}`;
@@ -57,7 +67,6 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
 
             result[compositeKey] = fetchedData;
 
-            // Update latestOverallTs if a newer timestamp is found
             if (fetchedData.length > 0) {
               const currentLatest = Math.max(...fetchedData.map(d => d.ts));
               if (currentLatest > latestOverallTs) {
@@ -81,7 +90,6 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
     fetchTimeSeriesForAllWidgets();
   }, [config, token, onLatestTimestampChange]);
 
-  // Helpers
   const getValue = (key, deviceId) => {
     const flatKey = `${deviceId}_${key}`;
     const points = timeSeries[flatKey] || [];
@@ -110,6 +118,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
       {config.widgets.map((w, i) => {
         const key = w.id || w.name || `widget-${i}`;
         const parameters = Array.isArray(w.parameters) ? w.parameters : [];
+        // Note: For image widgets, parameters structure is { imageId, publicLink, title }
         const series = parameters.map((p) => ({
           data: getSeriesData(p.key, p.deviceId),
           value: getValue(p.key, p.deviceId),
@@ -135,6 +144,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                   return <ChemicalDosage title={w.name} series={series} saveLayout={saveLayout} />;
                 case 'waterproperty':
                   return <WaterProperty {...series[0]} />;
+                case 'image':
+                  return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>
                 default:
                   return (
                     <div className="text-center">

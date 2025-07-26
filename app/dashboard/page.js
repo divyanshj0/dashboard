@@ -6,10 +6,10 @@ import { FaKey } from "react-icons/fa6";
 import clsx from 'clsx';
 import { BsDatabaseUp } from 'react-icons/bs';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
-import WidgetPlacementModal from '@/components/WidgetPlacementModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
 import ChangePasswordModal from '@/components/changePasswordModal';
+import { toast } from 'react-toastify';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -19,8 +19,6 @@ export default function Dashboard() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showPlacementModal, setShowPlacementModal] = useState(false);
-  const [createdWidgets, setCreatedWidgets] = useState([]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUpdateData, setShowUpdateData] = useState(false);
@@ -29,6 +27,7 @@ export default function Dashboard() {
   const [saveLayout, setSaveLayout] = useState(false); // edit mode
   const [save, setSave] = useState(false);
   const [latestTelemetryTime, setLatestTelemetryTime] = useState(null);
+  const [userAuthority, setUserAuthority] = useState(''); // New state for user authority
   const status = 'Normal';
   const menuRef = useRef(null);
 
@@ -55,7 +54,10 @@ export default function Dashboard() {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
       const userId = localStorage.getItem('tb_userId');
+      const authority = localStorage.getItem('userAuthority'); // Get user authority
       setToken(token);
+      setUserAuthority(authority); // Set user authority state
+
       if (!token) {
         router.push('/');
         return;
@@ -110,16 +112,123 @@ export default function Dashboard() {
       if (res.ok) {
         setConfig(updatedConfig);
         setLayout(newLayout);
+        toast.success("Layout saved successfully!");
       } else {
-        console.error('Failed to save layout config');
+        const errorData = await res.json();
+        console.error('Failed to save layout config:', errorData);
+        toast.error(`Failed to save layout: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Layout save error:', err);
+      toast.error('Error saving layout.');
     }
   };
-  const handleSaveConfig = async (newConfig) => {
+
+  const handleSaveConfig = async (widgetsFromModal) => {
     const token = localStorage.getItem('tb_token');
     const userId = localStorage.getItem('tb_userId');
+
+    let currentWidgets = config?.widgets || [];
+    let currentLayout = config?.layout || [];
+
+    const COLS = 12; 
+
+    // Deep copy currentWidgets and currentLayout to modify them
+    let widgetsToSave = currentWidgets.map(w => ({ ...w }));
+    let layoutToSave = currentLayout.map(l => ({ ...l }));
+
+    // Find the max Y and the bottom-most point of any widget
+    let maxExistingY = 0; // Highest Y coordinate (top of a widget)
+    let maxExistingBottom = 0; // Lowest point (bottom of a widget)
+    if (currentLayout.length > 0) {
+        maxExistingY = Math.max(...currentLayout.map(item => item.y));
+        maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
+    }
+
+    // Determine initial placement for new widgets
+    let currentPlacementX = 0;
+    let currentPlacementY = maxExistingBottom; // Default to placing below everything
+
+    // If there are existing widgets, try to place in the last row
+    if (currentLayout.length > 0) {
+        // Find widgets in the row with the highest Y coordinate (the "last" row)
+        const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
+        
+        if (widgetsInLastVisualRow.length > 0) {
+            // Find the rightmost occupied position in that row
+            const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
+            
+            // If there's space after the rightmost widget in the last row
+            if (rightmostXInLastRow < COLS) {
+                currentPlacementX = rightmostXInLastRow;
+                currentPlacementY = maxExistingY; // Place it in the same row
+            }
+        }
+    }
+
+    // Process widgets coming from the modal
+    widgetsFromModal.forEach(widgetFromModal => {
+        const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
+
+        if (existingWidget) {
+            // Update existing widget's config (name, type, parameters)
+            Object.assign(existingWidget, widgetFromModal);
+            // Layout is not changed for existing widgets by this process
+            // If it somehow doesn't have a layout item, assign one (fallback)
+            if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
+                 layoutToSave.push({
+                    i: widgetFromModal.id,
+                    x: currentPlacementX,
+                    y: currentPlacementY,
+                    w: widgetFromModal.layout?.w || 3,
+                    h: widgetFromModal.layout?.h || 2,
+                });
+                // Update currentPlacementX/Y for next new widget if this was a new layout
+                currentPlacementX += (widgetFromModal.layout?.w || 3);
+                if (currentPlacementX >= COLS) {
+                    currentPlacementX = 0;
+                    currentPlacementY += (widgetFromModal.layout?.h || 2);
+                }
+            }
+        } else {
+            // It's a BRAND NEW widget
+            const defaultW = widgetFromModal.layout?.w || 3;
+            const defaultH = widgetFromModal.layout?.h || 2;
+
+            // Check if new widget fits in current attempted row and column
+            if (currentPlacementX + defaultW > COLS) {
+                // Doesn't fit in current row at currentPlacementX, move to next overall available row
+                currentPlacementX = 0;
+                currentPlacementY = maxExistingBottom; // Place it below all current widgets
+                // Update maxExistingBottom for subsequent new widgets being added in this batch
+                maxExistingBottom += defaultH; 
+            }
+
+            const newLayoutItem = {
+                i: widgetFromModal.id,
+                x: currentPlacementX,
+                y: currentPlacementY,
+                w: defaultW,
+                h: defaultH,
+            };
+            
+            widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
+            layoutToSave.push(newLayoutItem);
+
+            currentPlacementX += defaultW; // Advance X for the next new widget in the same row
+        }
+    });
+
+    // After processing all widgets from modal, filter out any widgets
+    // that were in currentWidgets but are not in widgetsFromModal (i.e., they were deleted).
+    const finalWidgetsToSave = widgetsToSave.filter(w => widgetsFromModal.some(mw => mw.id === w.id));
+    const finalLayoutToSave = layoutToSave.filter(l => widgetsFromModal.some(mw => mw.id === l.i));
+
+
+    const updatedConfig = {
+      widgets: finalWidgetsToSave,
+      layout: finalLayoutToSave,
+    };
 
     try {
       const res = await fetch('/api/thingsboard/saveDashboardConfig', {
@@ -127,20 +236,28 @@ export default function Dashboard() {
         body: JSON.stringify({
           token,
           userId,
-          config: newConfig,
+          config: updatedConfig,
         }),
       });
 
       if (res.ok) {
-        setConfig(newConfig);
+        setConfig(updatedConfig);
+        setLayout(updatedConfig.layout);
+        toast.success("Dashboard updated successfully!");
       } else {
-        console.error('Failed to save config');
+        const errorData = await res.json();
+        console.error('Failed to save config:', errorData);
+        toast.error(`Failed to update dashboard: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Config save error:', err);
+      toast.error('Error updating dashboard configuration.');
+    } finally {
+        setShowCreateModal(false);
     }
   };
 
+      
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp);
@@ -326,7 +443,7 @@ export default function Dashboard() {
               onLayoutSave={(newLayout) => setDraftLayout(newLayout)}
               saveLayout={saveLayout}
               token={token}
-              onLatestTimestampChange={setLatestTelemetryTime} // Pass the setter function
+              onLatestTimestampChange={setLatestTelemetryTime}
             />
             <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
               <button
@@ -369,29 +486,12 @@ export default function Dashboard() {
           onClose={() => setShowCreateModal(false)}
           existingWidgets={config?.widgets || []}
           onNext={(widgets) => {
-            setCreatedWidgets(widgets);
-            setShowCreateModal(false);
-            setShowPlacementModal(true);
+            handleSaveConfig(widgets);
           }}
+          userAuthority={userAuthority}
         />
       )}
 
-      {showPlacementModal && (
-        <WidgetPlacementModal
-          widgets={createdWidgets}
-          onSave={(finalWidgets) => {
-            const updatedConfig = {
-              widgets: finalWidgets,
-              layout: finalWidgets.map((w) => w.layout),
-            };
-            setConfig(updatedConfig);
-            setLayout(updatedConfig.layout);
-            handleSaveConfig(updatedConfig);
-            setShowPlacementModal(false);
-          }}
-          onClose={() => setShowPlacementModal(false)}
-        />
-      )}
       {showUpdateData && (
         <DataUpdate
           onClose={() => setShowUpdateData(false)}

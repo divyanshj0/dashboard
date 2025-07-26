@@ -5,10 +5,10 @@ import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout } from 'react-icons/fi
 import clsx from 'clsx';
 import { BsDatabaseUp } from 'react-icons/bs';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
-import WidgetPlacementModal from '@/components/WidgetPlacementModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
 import { toast } from 'react-toastify';
+
 
 export default function DashboardPage({ params }) {
   const { username, userId } = params;
@@ -18,15 +18,14 @@ export default function DashboardPage({ params }) {
   const [draftLayout, setDraftLayout] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showPlacementModal, setShowPlacementModal] = useState(false);
-  const [createdWidgets, setCreatedWidgets] = useState([]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showUpdateData, setShowUpdateData] = useState(false);
   const [token, setToken] = useState('');
   const [saveLayout, setSaveLayout] = useState(false);
   const [save, setSave] = useState(false);
-  const [latestTelemetryTime, setLatestTelemetryTime] = useState(null); 
+  const [latestTelemetryTime, setLatestTelemetryTime] = useState(null);
+  const [userAuthority, setUserAuthority] = useState(''); // New state for user authority
   const status = 'Normal';
   const menuRef = useRef(null);
 
@@ -52,7 +51,10 @@ export default function DashboardPage({ params }) {
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
+      const authority = localStorage.getItem('userAuthority'); // Get user authority
       setToken(token);
+      setUserAuthority(authority); // Set user authority state
+
       if (!token) {
         router.push('/');
         return;
@@ -85,10 +87,142 @@ export default function DashboardPage({ params }) {
 
   const handleSaveLayout = async (newLayout) => {
     const token = localStorage.getItem('tb_token');
+    // userId is already available from params
 
     const updatedConfig = {
       ...config,
       layout: newLayout,
+    };
+
+    try {
+      const res = await fetch('/api/thingsboard/saveDashboardConfig', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          userId, // Use userId from params
+          config: updatedConfig,
+        }),
+      });
+
+      if (res.ok) {
+        setConfig(updatedConfig);
+        setLayout(newLayout);
+        toast.success("Layout saved successfully!");
+      } else {
+        const errorData = await res.json();
+        console.error('Failed to save layout config:', errorData);
+        toast.error(`Failed to save layout: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Layout save error:', err);
+      toast.error('Error saving layout.');
+    }
+  };
+
+  const handleSaveConfig = async (widgetsFromModal) => {
+    const token = localStorage.getItem('tb_token');
+    // userId is already available from params
+
+    let currentWidgets = config?.widgets || [];
+    let currentLayout = config?.layout || [];
+
+    const COLS = 12; 
+
+    // Deep copy currentWidgets and currentLayout to modify them
+    let widgetsToSave = currentWidgets.map(w => ({ ...w }));
+    let layoutToSave = currentLayout.map(l => ({ ...l }));
+
+    // Find the max Y and the bottom-most point of any widget
+    let maxExistingY = 0; // Highest Y coordinate (top of a widget)
+    let maxExistingBottom = 0; // Lowest point (bottom of a widget)
+    if (currentLayout.length > 0) {
+        maxExistingY = Math.max(...currentLayout.map(item => item.y));
+        maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
+    }
+
+    // Determine initial placement for new widgets
+    let currentPlacementX = 0;
+    let currentPlacementY = maxExistingBottom; // Default to placing below everything
+
+    // If there are existing widgets, try to place in the last row
+    if (currentLayout.length > 0) {
+        // Find widgets in the row with the highest Y coordinate (the "last" row)
+        const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
+        
+        if (widgetsInLastVisualRow.length > 0) {
+            // Find the rightmost occupied position in that row
+            const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
+            
+            // If there's space after the rightmost widget in the last row
+            if (rightmostXInLastRow < COLS) {
+                currentPlacementX = rightmostXInLastRow;
+                currentPlacementY = maxExistingY; // Place it in the same row
+            }
+        }
+    }
+
+    // Process widgets coming from the modal
+    widgetsFromModal.forEach(widgetFromModal => {
+        const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
+
+        if (existingWidget) {
+            // Update existing widget's config (name, type, parameters)
+            Object.assign(existingWidget, widgetFromModal);
+            // Layout is not changed for existing widgets by this process
+            // If it somehow doesn't have a layout item, assign one (fallback)
+            if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
+                 layoutToSave.push({
+                    i: widgetFromModal.id,
+                    x: currentPlacementX,
+                    y: currentPlacementY,
+                    w: widgetFromModal.layout?.w || 3,
+                    h: widgetFromModal.layout?.h || 2,
+                });
+                // Update currentPlacementX/Y for next new widget if this was a new layout
+                currentPlacementX += (widgetFromModal.layout?.w || 3);
+                if (currentPlacementX >= COLS) {
+                    currentPlacementX = 0;
+                    currentPlacementY += (widgetFromModal.layout?.h || 2);
+                }
+            }
+        } else {
+            // It's a BRAND NEW widget
+            const defaultW = widgetFromModal.layout?.w || 3;
+            const defaultH = widgetFromModal.layout?.h || 2;
+
+            // Check if new widget fits in current attempted row and column
+            if (currentPlacementX + defaultW > COLS) {
+                // Doesn't fit in current row at currentPlacementX, move to next overall available row
+                currentPlacementX = 0;
+                currentPlacementY = maxExistingBottom; // Place it below all current widgets
+                // Update maxExistingBottom for subsequent new widgets being added in this batch
+                maxExistingBottom += defaultH; 
+            }
+
+            const newLayoutItem = {
+                i: widgetFromModal.id,
+                x: currentPlacementX,
+                y: currentPlacementY,
+                w: defaultW,
+                h: defaultH,
+            };
+            
+            widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
+            layoutToSave.push(newLayoutItem);
+
+            currentPlacementX += defaultW; // Advance X for the next new widget in the same row
+        }
+    });
+
+    // After processing all widgets from modal, filter out any widgets
+    // that were in currentWidgets but are not in widgetsFromModal (i.e., they were deleted).
+    const finalWidgetsToSave = widgetsToSave.filter(w => widgetsFromModal.some(mw => mw.id === w.id));
+    const finalLayoutToSave = layoutToSave.filter(l => widgetsFromModal.some(mw => mw.id === l.i));
+
+
+    const updatedConfig = {
+      widgets: finalWidgetsToSave,
+      layout: finalLayoutToSave,
     };
 
     try {
@@ -103,37 +237,21 @@ export default function DashboardPage({ params }) {
 
       if (res.ok) {
         setConfig(updatedConfig);
-        setLayout(newLayout);
-        toast.success('Layout saved Succesfully!!')
+        setLayout(updatedConfig.layout);
+        toast.success("Dashboard updated successfully!");
       } else {
-        toast.error('Failed to save layout config');
+        const errorData = await res.json();
+        console.error('Failed to save config:', errorData);
+        toast.error(`Failed to update dashboard: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
-      toast.error('Layout save error:', err);
+      console.error('Config save error:', err);
+      toast.error('Error updating dashboard configuration.');
+    } finally {
+        setShowCreateModal(false);
     }
   };
-  const handleSaveConfig = async (newConfig) => {
-    const token = localStorage.getItem('tb_token');
 
-    try {
-      const res = await fetch('/api/thingsboard/saveDashboardConfig', {
-        method: 'POST',
-        body: JSON.stringify({
-          token,
-          userId,
-          config: newConfig,
-        }),
-      });
-
-      if (res.ok) {
-        setConfig(newConfig);
-      } else {
-        toast.error('Failed to save config');
-      }
-    } catch (err) {
-      toast.error('Config save error:', err);
-    }
-  };
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
@@ -209,21 +327,28 @@ export default function DashboardPage({ params }) {
                     </button>
 
                     <button
-                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-max"
-                      onClick={() => {
-                        setShowUpdateData(true); setShowMenu((prev) => !prev);
+                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-full"
+                      onClick={() => {setShowUpdateData(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <BsDatabaseUp size={20} className="mr-2" />Data Update
                     </button>
                     <button
-                      className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-max"
+                      className="px-4 py-2 text-blue-600 text-lg flex justify-center items-center hover:bg-gray-100 w-max"
+                      onClick={() => {setShowChangePassword(true); setShowMenu((prev) => !prev);
+                      }}
+                    >
+                      <FaKey size={20} className="mr-2" />Change Password
+                    </button>
+
+                    <button
+                      className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
                       onClick={() => {
                         handleLogout();
                         setShowMenu((prev) => !prev);
                       }}
                     >
-                      <FiLogOut size={20} className="mr-2" /> Admin Panel
+                      <FiLogOut size={20} className="mr-2" /> Logout
                     </button>
                   </div>
                 </div>
@@ -249,7 +374,7 @@ export default function DashboardPage({ params }) {
               </div>
               <div className="flex gap-5 items-center">
                 <p className='text-lg font-medium'>Profile</p>
-                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {username}</p>
+                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {name}</p>
               </div>
               <div className="flex items-center gap-5">
                 <p className='text-lg font-medium'>Status</p>
@@ -276,19 +401,20 @@ export default function DashboardPage({ params }) {
                   onClick={() => { setShowUpdateData(true); setShowSidebar(false); }}>
                   <BsDatabaseUp size={20} className="mr-2" /> Data Update
                 </button>
+                <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
+                  onClick={() => { setShowChangePassword(true); setShowSidebar(false); }}>
+                  <FaKey size={20} className="mr-2" /> Change Password
+                </button>
                 <button
-                  className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
-                  onClick={() => {
-                    handleLogout();
-                  }}
+                  className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"
+                  onClick={handleLogout}
                 >
                   <FiLogOut size={20} className="mr-2" /> Logout
                 </button>
-
               </div>
-              <div className={`${!config || config.widgets.length === 0 ? 'hidden' : ''}`}>
+              <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
                 <p className="font-medium">Last Updated</p>
-                <span>{formatTimestamp(latestTelemetryTime)}</span> 
+                <span>{formatTimestamp(latestTelemetryTime)}</span>
               </div>
             </div>
           </div>
@@ -355,35 +481,22 @@ export default function DashboardPage({ params }) {
           onClose={() => setShowCreateModal(false)}
           existingWidgets={config?.widgets || []}
           onNext={(widgets) => {
-            setCreatedWidgets(widgets);
-            setShowCreateModal(false);
-            setShowPlacementModal(true);
+            handleSaveConfig(widgets);
           }}
+          userAuthority={userAuthority}
         />
       )}
 
-      {showPlacementModal && (
-        <WidgetPlacementModal
-          widgets={createdWidgets}
-          onSave={(finalWidgets) => {
-            const updatedConfig = {
-              widgets: finalWidgets,
-              layout: finalWidgets.map((w) => w.layout),
-            };
-            setConfig(updatedConfig);
-            setLayout(updatedConfig.layout);
-            handleSaveConfig(updatedConfig);
-            setShowPlacementModal(false);
-          }}
-          onClose={() => setShowPlacementModal(false)}
-        />
-      )}
       {showUpdateData && (
         <DataUpdate
           onClose={() => setShowUpdateData(false)}
+          />
+      )}
+      {showChangePassword && (
+        <ChangePasswordModal
+          onClose={() => setShowChangePassword(false)}
         />
       )}
-
     </>
   );
 }
