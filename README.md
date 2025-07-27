@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -35,6 +36,9 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # Smart Water
+=======
+# Dashboard App
+>>>>>>> c59587cba12a00f892d09099ba50fbe97008cf87
 
 
 
@@ -51,14 +55,22 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
+<<<<<<< HEAD
 git remote add origin https://gitlab.com/theelitepro/smart-water.git
+=======
+git remote add origin https://gitlab.com/theelitepro/dashboard-app.git
+>>>>>>> c59587cba12a00f892d09099ba50fbe97008cf87
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
+<<<<<<< HEAD
 - [ ] [Set up project integrations](https://gitlab.com/theelitepro/smart-water/-/settings/integrations)
+=======
+- [ ] [Set up project integrations](https://gitlab.com/theelitepro/dashboard-app/-/settings/integrations)
+>>>>>>> c59587cba12a00f892d09099ba50fbe97008cf87
 
 ## Collaborate with your team
 
