@@ -51,9 +51,9 @@ export default function DashboardPage({ params }) {
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
-      const authority = localStorage.getItem('userAuthority'); // Get user authority
+      const authority = localStorage.getItem('userAuthority');
       setToken(token);
-      setUserAuthority(authority); // Set user authority state
+      setUserAuthority(authority);
 
       if (!token) {
         router.push('/');
@@ -99,7 +99,7 @@ export default function DashboardPage({ params }) {
         method: 'POST',
         body: JSON.stringify({
           token,
-          userId, // Use userId from params
+          userId,
           config: updatedConfig,
         }),
       });
@@ -121,20 +121,17 @@ export default function DashboardPage({ params }) {
 
   const handleSaveConfig = async (widgetsFromModal) => {
     const token = localStorage.getItem('tb_token');
-    // userId is already available from params
 
     let currentWidgets = config?.widgets || [];
     let currentLayout = config?.layout || [];
 
     const COLS = 12; 
 
-    // Deep copy currentWidgets and currentLayout to modify them
     let widgetsToSave = currentWidgets.map(w => ({ ...w }));
     let layoutToSave = currentLayout.map(l => ({ ...l }));
 
-    // Find the max Y and the bottom-most point of any widget
-    let maxExistingY = 0; // Highest Y coordinate (top of a widget)
-    let maxExistingBottom = 0; // Lowest point (bottom of a widget)
+    let maxExistingY = 0;
+    let maxExistingBottom = 0;
     if (currentLayout.length > 0) {
         maxExistingY = Math.max(...currentLayout.map(item => item.y));
         maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
@@ -166,10 +163,7 @@ export default function DashboardPage({ params }) {
         const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
 
         if (existingWidget) {
-            // Update existing widget's config (name, type, parameters)
             Object.assign(existingWidget, widgetFromModal);
-            // Layout is not changed for existing widgets by this process
-            // If it somehow doesn't have a layout item, assign one (fallback)
             if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
                  layoutToSave.push({
                     i: widgetFromModal.id,
@@ -178,7 +172,6 @@ export default function DashboardPage({ params }) {
                     w: widgetFromModal.layout?.w || 3,
                     h: widgetFromModal.layout?.h || 2,
                 });
-                // Update currentPlacementX/Y for next new widget if this was a new layout
                 currentPlacementX += (widgetFromModal.layout?.w || 3);
                 if (currentPlacementX >= COLS) {
                     currentPlacementX = 0;
@@ -186,16 +179,12 @@ export default function DashboardPage({ params }) {
                 }
             }
         } else {
-            // It's a BRAND NEW widget
             const defaultW = widgetFromModal.layout?.w || 3;
             const defaultH = widgetFromModal.layout?.h || 2;
 
-            // Check if new widget fits in current attempted row and column
             if (currentPlacementX + defaultW > COLS) {
-                // Doesn't fit in current row at currentPlacementX, move to next overall available row
                 currentPlacementX = 0;
-                currentPlacementY = maxExistingBottom; // Place it below all current widgets
-                // Update maxExistingBottom for subsequent new widgets being added in this batch
+                currentPlacementY = maxExistingBottom;
                 maxExistingBottom += defaultH; 
             }
 
@@ -210,12 +199,10 @@ export default function DashboardPage({ params }) {
             widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
             layoutToSave.push(newLayoutItem);
 
-            currentPlacementX += defaultW; // Advance X for the next new widget in the same row
+            currentPlacementX += defaultW;
         }
     });
 
-    // After processing all widgets from modal, filter out any widgets
-    // that were in currentWidgets but are not in widgetsFromModal (i.e., they were deleted).
     const finalWidgetsToSave = widgetsToSave.filter(w => widgetsFromModal.some(mw => mw.id === w.id));
     const finalLayoutToSave = layoutToSave.filter(l => widgetsFromModal.some(mw => mw.id === l.i));
 
@@ -327,18 +314,11 @@ export default function DashboardPage({ params }) {
                     </button>
 
                     <button
-                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-full"
+                      className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-max"
                       onClick={() => {setShowUpdateData(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <BsDatabaseUp size={20} className="mr-2" />Data Update
-                    </button>
-                    <button
-                      className="px-4 py-2 text-blue-600 text-lg flex justify-center items-center hover:bg-gray-100 w-max"
-                      onClick={() => {setShowChangePassword(true); setShowMenu((prev) => !prev);
-                      }}
-                    >
-                      <FaKey size={20} className="mr-2" />Change Password
                     </button>
 
                     <button
@@ -400,10 +380,6 @@ export default function DashboardPage({ params }) {
                 <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
                   onClick={() => { setShowUpdateData(true); setShowSidebar(false); }}>
                   <BsDatabaseUp size={20} className="mr-2" /> Data Update
-                </button>
-                <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
-                  onClick={() => { setShowChangePassword(true); setShowSidebar(false); }}>
-                  <FaKey size={20} className="mr-2" /> Change Password
                 </button>
                 <button
                   className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"
@@ -491,11 +467,6 @@ export default function DashboardPage({ params }) {
         <DataUpdate
           onClose={() => setShowUpdateData(false)}
           />
-      )}
-      {showChangePassword && (
-        <ChangePasswordModal
-          onClose={() => setShowChangePassword(false)}
-        />
       )}
     </>
   );
