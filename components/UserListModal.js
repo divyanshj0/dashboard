@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onCreateDashboard }) {
-  console.log(users)
   const router = useRouter();
   useEffect(() => {
     function handleKeyDown(event) {

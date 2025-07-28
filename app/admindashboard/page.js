@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const [customerDevices, setCustomerDevices] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [device, setDevice] = useState({}); // This will store the full device object for editing
-  const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '' });
+  const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '',password:'',confirmPassword:'' });
   const [newDevice, setNewDevice] = useState({ name: '', label: '', clientId: '', username: '', password: '' });
   const [loading, setLoading] = useState(true);
   const [save,setSave]= useState(false);
@@ -103,21 +103,32 @@ export default function AdminDashboard() {
     setShowAddModal(false);
   };
   const handleAddUser = async () => {
-    await fetch('/api/thingsboard/addUser', {
-      method: 'POST',
-      body: JSON.stringify({
-        token,
-        customerId: selectedCustomerId,
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName
-      }),
-    });
-    setNewUser({ email: '', firstName: '', lastName: '' });
+  const res = await fetch('/api/thingsboard/addUser', {
+    method: 'POST',
+    body: JSON.stringify({
+      token,
+      customerId: selectedCustomerId,
+      email: newUser.email,
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
+      password: newUser.password,
+    }),
+  });
+
+  const data = await res.json();  // parse JSON body
+
+  if (!res.ok) {
+    toast.error(data.error || 'Something went wrong');
     setSave(false);
-    toast.success('User added successfully');
-    setShowAddUserModal(false);
-  };
+    return;
+  }
+
+  setNewUser({ email: '', firstName: '', lastName: '', password: '', confirmPassword: '' });
+  setSave(false);
+  toast.success('User added successfully');
+  setShowAddUserModal(false);
+};
+
 
   const handleAddDevice = async () => {
     await fetch('/api/thingsboard/createdevice', {
