@@ -1,76 +1,105 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react';
 
-const WaterProperty = ({pumprate,pump,inletflow,inltettds,outletflow,outlettds,rejectflow,rejecttds}) => {
-    return (
-        <div className="flex flex-wrap justify-between gap-2 bg-white">
-            {/* Operator Info */}
-            <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-                <p className="text-lg font-medium">Operator Info</p>
-                <div className="flex py-1 gap-2 justify-between items-center">
-                    <p className="text-sm font-medium">Name</p>
-                    <span>Ramesh Lal</span>
-                </div>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">Current Shift</p>
-                    <span>A</span>
-                </div>
-            </div>
+const WaterProperty = ({ title = "", parameters = [], token }) => {
+  const [fetchedValues, setFetchedValues] = useState({});
+  const [loadingData, setLoadingData] = useState(true);
 
-            {/* Inlet Properties */}
-            <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-                <p className="text-lg font-medium">Inlet Properties</p>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">Flow Rate</p>
-                    <span>{inletflow} L/hr</span>
-                </div>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">TDS</p>
-                    <span>{inltettds} ppm</span>
-                </div>
-            </div>
+  useEffect(() => {
+    const fetchLatestValues = async () => {
+      if (!token || parameters.length === 0) {
+        setFetchedValues({});
+        setLoadingData(false);
+        return;
+      }
 
-            {/* Reject Properties */}
-            <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-                <p className="text-lg font-medium">Reject Properties</p>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">Flow Rate</p>
-                    <span>{rejectflow} L/hr</span>
-                </div>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">TDS</p>
-                    <span>{rejecttds} ppm</span>
-                </div>
-            </div>
+      setLoadingData(true);
+      const newFetchedValues = {};
+      const fetchPromises = parameters.map(async (param) => {
+        try {
+          const res = await fetch('/api/thingsboard/timeseriesdata', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              token,
+              deviceId: param.deviceId,
+              key: param.key,
+              limit: 1,
+            }),
+          });
 
-            {/* Outlet Properties */}
-            <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-                <p className="text-lg font-medium">Outlet Properties</p>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">Flow Rate</p>
-                    <span>{outletflow} L/hr</span>
-                </div>
-                <div className="flex py-1 justify-between items-center">
-                    <p className="text-sm font-medium">TDS</p>
-                    <span>{outlettds} ppm</span>
-                </div>
-            </div>
+          if (!res.ok) {
+            console.error(`Failed to fetch data for key '${param.key}': ${res.statusText}`);
+            newFetchedValues[param.key] = { value: null, unit: param.unit };
+            return;
+          }
 
-            {/* Pump Properties */}
-            <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-                <p className="text-lg font-medium">Pump Properties</p>
-                <p className="text-sm font-medium">Pump #1</p>
-                <div className="flex py-1 justify-between">
-                    <span className="text-sm text-gray-600">Status</span>
-                    <span className="text-sm font-medium text-green-600">{pump?'Running':'Stopped'}</span>
-                </div>
-                <div className="flex py-1 justify-between">
-                    <span className="text-sm text-gray-600">Run Time</span>
-                    <span className="text-sm font-medium">{pumprate} hr</span>
-                    
-                </div>
+          const data = await res.json();
+          const latestEntry = Array.isArray(data[param.key]) && data[param.key].length > 0
+            ? data[param.key][0]
+            : null;
+
+          newFetchedValues[param.key] = {
+            value: latestEntry ? parseFloat(latestEntry.value) : null,
+            unit: param.unit || '' 
+          };
+
+        } catch (error) {
+          console.error(`Error fetching data for key '${param.key}':`, error);
+          newFetchedValues[param.key] = { value: null, unit: param.unit };
+        }
+      });
+
+      await Promise.all(fetchPromises);
+      setFetchedValues(newFetchedValues);
+      setLoadingData(false);
+    };
+
+    fetchLatestValues();
+  }, [parameters, token]);
+  const getDisplayValue = (key) => {
+    const dataEntry = fetchedValues[key];
+
+    if (loadingData) return '...';
+    if (!dataEntry || dataEntry.value === null || dataEntry.value === undefined) return 'N/A';
+
+    if (key.toLowerCase().includes('pumpstatus') || key.toLowerCase() === 'pump') { 
+      return dataEntry.value ? 'Running' : 'Stopped';
+    }
+
+    return `${dataEntry.value} ${dataEntry.unit}`.trim();
+  };
+
+  return (
+    <div className="flex flex-wrap justify-between gap-2 bg-white w-full h-full">
+      {parameters.length > 0 && (
+        <div className="flex-1 min-w-[200px] p-2 rounded-md shadow-md">
+          <p className="text-lg font-medium">{title}</p>
+          {loadingData ? (
+            <div className="flex justify-center items-center h-24">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
+          ) : (
+            parameters.map((param) => (
+              <div key={param.key} className="flex py-1 justify-between items-center">
+                <p className="text-sm font-medium">{param.label || param.key}</p>
+                <span className={param.key.toLowerCase().includes('pump') && fetchedValues[param.key]?.value ? 'text-green-600' : ''}>
+                  {getDisplayValue(param.key)}
+                </span>
+              </div>
+            ))
+          )}
         </div>
-    )
-}
+      )}
+      {parameters.length === 0 && !loadingData && (
+         <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
+           <p className="text-lg font-medium">{title}</p>
+           <p className="text-sm text-gray-500">No properties configured for this widget.</p>
+         </div>
+      )}
+    </div>
+  );
+};
 
-export default WaterProperty
+export default WaterProperty;

@@ -284,7 +284,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <option value="line">Line Chart</option>
                     <option value="donut">Donut</option>
                     <option value="pie">Pie Chart</option>
-                    <option value="waterproperty">Water Property</option>
+                    <option value="card">Value Card</option>
                     <option value="chemicaldosage">Chemical Dosage</option>
                     {/* Conditionally render Image option */}
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
