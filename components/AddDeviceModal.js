@@ -49,10 +49,10 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
             <>
               {['name', 'label'].map(field => (
                 <div key={field}>
-                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} *</label>
+                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} {field!=='label'?'*':''}</label>
                   <input
                     type="text"
-                    required
+                    required={field!=='label'}
                     placeholder={`Enter device ${field}`}
                     value={device[field]}
                     onChange={(e) => onChange(field, e.target.value)}

@@ -303,12 +303,16 @@ export default function DashboardPage({ params }) {
                       <FiEdit2 size={20} className="mr-2" /> Customize
                     </button>
                     <button
-                      className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full"
+                      className={clsx(
+                        "flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full",
+                        { "opacity-50 cursor-not-allowed": !config || config.widgets.length === 0 }
+                      )}
                       onClick={() => {
                         setDraftLayout(layout); // store current layout for editing
                         setSaveLayout(true);
                         setShowMenu((prev) => !prev);
                       }}
+                      disabled={!config || config.widgets.length === 0}
                     >
                       <FiLayout size={20} className="mr-2" />Edit Layout
                     </button>
@@ -373,8 +377,14 @@ export default function DashboardPage({ params }) {
                 >
                   <FiEdit2 size={20} className="mr-2" /> Customize
                 </button>
-                <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
-                  onClick={() => { setDraftLayout(layout); setSaveLayout(true); setShowSidebar(false); }}>
+                <button 
+                  className={clsx(
+                    "flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full",
+                    { "opacity-50 cursor-not-allowed": !config || config.widgets.length === 0 }
+                  )}
+                  onClick={() => { setDraftLayout(layout); setSaveLayout(true); setShowSidebar(false); }}
+                  disabled={!config || config.widgets.length === 0}
+                >
                   <FiLayout size={20} className="mr-2" /> Edit Layout
                 </button>
                 <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"

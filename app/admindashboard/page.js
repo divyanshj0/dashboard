@@ -38,6 +38,10 @@ export default function AdminDashboard() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: ''});
   const [isDeleteCustomer, setIsDeleteCustomer] = useState(false);
+  const [isDeleteUser, setIsDeleteUser] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeleteDevice, setIsDeleteDevice] = useState(false); 
+  const [deviceToDelete, setDeviceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef(null);
   useEffect(() => {
@@ -214,14 +218,27 @@ export default function AdminDashboard() {
   }
 
   const handleDeleteUser = async (userId) => {
+    setDeleting(true);
     await fetch('/api/thingsboard/deleteUser', {
       method: 'POST',
       body: JSON.stringify({ token, userId }),
     });
-    fetchCustomers(token);
+    fetchUser(token, selectedCustomerId);
     setDeleting(false);
-    setIsDeleteCustomer(false);
+    setIsDeleteUser(false);
     toast.success('User Deleted Successfully');
+  };
+  
+  const handleDeleteDevice = async (deviceId) => {
+    setDeleting(true);
+    await fetch('/api/thingsboard/deleteDevice', {
+      method: 'POST',
+      body: JSON.stringify({ token, deviceId }),
+    });
+    fetchDevices(token, selectedCustomerId);
+    setDeleting(false);
+    setIsDeleteDevice(false);
+    toast.success('Device Deleted Successfully');
   };
 
   const handleLogout = () => {
@@ -332,6 +349,20 @@ export default function AdminDashboard() {
             deleting={deleting}
           />
         )}
+        {isDeleteUser && (
+          <DeletePopup
+            onConfirm={() => handleDeleteUser(userToDelete)}
+            onCancel={() => { setIsDeleteUser(false); setUserToDelete(null); }}
+            deleting={deleting}
+          />
+        )}
+        {isDeleteDevice && (
+          <DeletePopup
+            onConfirm={() => handleDeleteDevice(deviceToDelete)}
+            onCancel={() => { setIsDeleteDevice(false); setDeviceToDelete(null); }}
+            deleting={deleting}
+          />
+        )}
 
         {/* Modal for Add Customer */}
         {showAddModal && (
@@ -352,7 +383,7 @@ export default function AdminDashboard() {
             onRefresh={async () => {
               await fetchUser(token, selectedCustomerId);
             }}
-            onDelete={handleDeleteUser}
+            onDelete={(userId) => { setIsDeleteUser(true); setUserToDelete(userId); }}
             onCreateDashboard={() => { fetchDev(token, selectedCustomerId) }}
           />
         )}
@@ -378,6 +409,7 @@ export default function AdminDashboard() {
               setShowEditModal(true)
               setDevice(deviceToEdit);
             }}
+            onDelete={(deviceId) => { setIsDeleteDevice(true); setDeviceToDelete(deviceId); }}
           />
         )}
         {showAddDeviceModal && (

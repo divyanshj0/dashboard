@@ -1,6 +1,9 @@
 import "./globals.css";
 import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; 
+import 'react-toastify/dist/ReactToastify.css';
+// Import Leaflet CSS
+import 'leaflet/dist/leaflet.css'; // Add this line
+
 export const metadata = {
   title: "Water Monitoring Dashboard",
   description: "Dashboard by The Elite Pro",

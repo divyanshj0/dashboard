@@ -8,6 +8,7 @@ import FlowRaterChart from './flowratechart';
 import ChemicalChart from './chemicalchart';
 import ChemicalDosage from './chemicalDosage';
 import ImageComponent from './Imagecomponent';
+import MapWidget from './MapWidget';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -53,7 +54,9 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 case 'card':
                   return <WaterProperty title={w.name} parameters={w.parameters} token={token} />;
                 case 'image':
-                  return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>
+                  return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
+                case 'map': // New case for Map Widget
+                  return <MapWidget title={w.name} parameters={w.parameters} token={token} />;
                 default:
                   return (
                     <div className="text-center">

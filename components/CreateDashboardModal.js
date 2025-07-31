@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
 
-export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) { // Added userAuthority prop
+export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
@@ -103,10 +103,10 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   };
 
   useEffect(() => {
-    if (open && userAuthority === 'TENANT_ADMIN') { // Only fetch images if user is Tenant Admin
+    if (open && userAuthority === 'TENANT_ADMIN') {
       fetchAvailableImages();
     }
-  }, [open, userAuthority]); // Depend on userAuthority as well
+  }, [open, userAuthority]);
 
 
   const addWidget = () => {
@@ -122,11 +122,24 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     setWidgets(w => w.filter((_, idx) => idx !== indexToRemove));
   };
 
-  const update = (indexToUpdate, field, val) => setWidgets(w => w.map((x, idx) => idx === indexToUpdate ? { ...x, [field]: val } : x));
+  const update = (indexToUpdate, field, val) => {
+    setWidgets(w => w.map((x, idx) => {
+      if (idx === indexToUpdate) {
+        const updatedWidget = { ...x, [field]: val };
+        // If widget type changes, reset parameters
+        if (field === 'type' && x.type !== val) {
+          updatedWidget.parameters = [];
+        }
+        return updatedWidget;
+      }
+      return x;
+    }));
+  };
   
   const updateImageParam = (widgetIdx, field, val) => {
     setWidgets(w => w.map((x, idx) => {
       if (idx !== widgetIdx) return x;
+      // Ensure parameters array exists and has at least one object
       const newParams = [{ ...(x.parameters?.[0] || {}) }];
       
       if (field === 'imageId') {
@@ -205,7 +218,15 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
 
   const addParam = (widgetIdx) => {
-    const newParam = { deviceId: '', key: '', label: '', unit: '' };
+    const widgetType = widgets[widgetIdx].type;
+    let newParam = {};
+
+    if (widgetType === 'map') {
+      newParam = { deviceId: '' }; // For map, just need device ID
+    } else {
+      newParam = { deviceId: '', key: '', label: '', unit: '' };
+    }
+
     setWidgets(w => w.map((x, idx) => idx === widgetIdx
       ? { ...x, parameters: [...(x.parameters || []), newParam] }
       : x
@@ -233,7 +254,12 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
     if (w.type === 'image') {
       return w.parameters.length > 0 && w.parameters[0].imageId;
-    } else {
+    } else if (w.type === 'map') {
+        // Map widget must have at least one device selected
+        return w.parameters.length > 0 && w.parameters.every(p => p.deviceId);
+    }
+    else {
+      // For graph widgets
       return w.parameters.length > 0 &&
              w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
     }
@@ -288,6 +314,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <option value="chemicaldosage">Chemical Dosage</option>
                     {/* Conditionally render Image option */}
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
+                    <option value="map">Map</option> {/* New Map Widget Option */}
                   </select>
                   <button
                     type="button"
@@ -366,6 +393,50 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                                 Link: <a href={`${Tb_Url}${w.parameters[0].publicLink}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Image Preview</a>
                             </p>
                         )}
+                    </div>
+                  ) : w.type === 'map' ? (
+                    // Map Widget Parameters
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-700">Devices to Display</h4>
+                        <button
+                          type="button"
+                          onClick={() => addParam(i)}
+                          className="inline-flex items-center text-blue-700 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 font-medium text-sm"
+                        >
+                          <FiPlus size={18} className="mr-1" /> Add Device
+                        </button>
+                      </div>
+                      {w.parameters.length === 0 && (
+                        <div className="text-xs text-gray-500 mb-4">Add at least one device to display on the map.</div>
+                      )}
+                      <div className="space-y-4">
+                        {w.parameters.map((p, pi) => (
+                          <div
+                            key={pi}
+                            className={clsx("grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-white rounded-lg px-3 py-2 shadow-sm border", 
+                              !p.deviceId && "border-red-300 ring-2 ring-red-100"
+                            )}
+                          >
+                            <select 
+                                value={p.deviceId} 
+                                onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} 
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                            >
+                              <option value="">Select Device</option>
+                              {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true);}}
+                              className="text-red-500 hover:text-red-700 outline-none ml-auto"
+                              title="Remove Device"
+                            >
+                              <FiTrash2 size={20} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     // Graph Widget Parameters (existing logic)
