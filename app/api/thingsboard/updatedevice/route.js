@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 
-const TB_URL = 'https://demo.thingsboard.io';
+const TB_URL = process.env.NEXT_PUBLIC_TB_URL;
 
 export async function POST(req) {
   try {
-    const { token,customerId, deviceId, name, label, clientId, username, password } = await req.json();
-    let credentialsUpdateRes;
-    let credentialsUpdateData;
+    const { token, customerId, deviceId, name, label, clientId, username, password } = await req.json();
+    let updatedDeviceRes;
+    let updatedDeviceData;
+
     if (clientId || username || password) {
-      credentialsUpdateRes = await fetch(`${TB_URL}/api/device-with-credentials`, {
+      updatedDeviceRes = await fetch(`${TB_URL}/api/device-with-credentials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,18 +32,17 @@ export async function POST(req) {
         }),
       });
 
-      credentialsUpdateData = await credentialsUpdateRes.json();
+      updatedDeviceData = await updatedDeviceRes.json();
 
-      if (!credentialsUpdateRes.ok) {
-        return NextResponse.json({ error: credentialsUpdateData.message || 'Failed to update device credentials' }, { status: credentialsUpdateRes.status });
+      if (!updatedDeviceRes.ok) {
+        return NextResponse.json({ error: updatedDeviceData.message || 'Failed to update device credentials' }, { status: updatedDeviceRes.status });
       }
-    }
-    else {
+    } else {
       if (!token || !deviceId) {
         return NextResponse.json({ error: 'Missing required fields: token or deviceId' }, { status: 400 });
       }
-      credentialsUpdateRes = await fetch(`${TB_URL}/api/device`, {
-        method: 'POST', // Use PUT for updating device
+      updatedDeviceRes = await fetch(`${TB_URL}/api/device`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Authorization': `Bearer ${token}`,
@@ -54,27 +54,27 @@ export async function POST(req) {
         }),
       });
 
-      credentialsUpdateData = await credentialsUpdateRes.json();
-      if (!deviceUpdateRes.ok) {
-        return NextResponse.json({ error: deviceUpdateData.message || 'Failed to update device basic info' }, { status: deviceUpdateRes.status });
+      updatedDeviceData = await updatedDeviceRes.json();
+      if (!updatedDeviceRes.ok) {
+        return NextResponse.json({ error: updatedDeviceData.message || 'Failed to update device basic info' }, { status: updatedDeviceRes.status });
       }
     }
-    const assignRes = await fetch(`${TB}/api/customer/${customerId}/device/${credentialsUpdateData.id.id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Authorization': `Bearer ${token}`,
-          },
-        });
-    
-        const assignResult = await assignRes.json();
-    
-        if (!assignRes.ok) {
-          return NextResponse.json({ error: assignResult.message || 'Failed to assign device to customer' }, { status: assignRes.status });
-        }
-    
-        // 3. Return device response
-        return NextResponse.json(device);
+
+    const assignRes = await fetch(`${TB_URL}/api/customer/${customerId}/device/${updatedDeviceData.id.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const assignResult = await assignRes.json();
+
+    if (!assignRes.ok) {
+      return NextResponse.json({ error: assignResult.message || 'Failed to assign device to customer' }, { status: assignRes.status });
+    }
+
+    return NextResponse.json(updatedDeviceData);
 
   } catch (error) {
     console.error('Update device error:', error);

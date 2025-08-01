@@ -36,7 +36,7 @@ export default function DataUpdate({ onClose }) {
             return;
         }
         try {
-            const res = await fetch(`https://demo.thingsboard.io/api/plugins/telemetry/DEVICE/${deviceId}/keys/timeseries`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_TB_URL}/api/plugins/telemetry/DEVICE/${deviceId}/keys/timeseries`, {
                 headers: { 'X-Authorization': `Bearer ${token}` }
             });
             const keys = await res.json();

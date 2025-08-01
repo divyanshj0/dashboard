@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const TB_URL = 'https://demo.thingsboard.io';
+const TB_URL = process.env.NEXT_PUBLIC_TB_URL;
 
 export async function POST(req) {
   const { token, userId } = await req.json();

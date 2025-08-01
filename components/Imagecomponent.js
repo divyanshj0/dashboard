@@ -1,4 +1,4 @@
-const TB_URL="https://demo.thingsboard.io"
+const TB_URL=process.env.NEXT_PUBLIC_TB_URL
 export default function ImageComponent({title,imgsrc}){
     
     return(

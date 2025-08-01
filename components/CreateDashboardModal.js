@@ -18,7 +18,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [newImageFile, setNewImageFile] = useState(null);
   const [newImageTitle, setNewImageTitle] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const Tb_Url="https://demo.thingsboard.io"
+  const Tb_Url=process.env.NEXT_PUBLIC_TB_URL
 
   useEffect(() => {
     if (open) {
@@ -126,7 +126,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     setWidgets(w => w.map((x, idx) => {
       if (idx === indexToUpdate) {
         const updatedWidget = { ...x, [field]: val };
-        // If widget type changes, reset parameters
         if (field === 'type' && x.type !== val) {
           updatedWidget.parameters = [];
         }
@@ -139,7 +138,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const updateImageParam = (widgetIdx, field, val) => {
     setWidgets(w => w.map((x, idx) => {
       if (idx !== widgetIdx) return x;
-      // Ensure parameters array exists and has at least one object
       const newParams = [{ ...(x.parameters?.[0] || {}) }];
       
       if (field === 'imageId') {
@@ -222,7 +220,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     let newParam = {};
 
     if (widgetType === 'map') {
-      newParam = { deviceId: '' }; // For map, just need device ID
+      newParam = { deviceId: '', name: '' };
     } else {
       newParam = { deviceId: '', key: '', label: '', unit: '' };
     }
@@ -247,6 +245,24 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     })
   );
 
+  const handleDeviceChange = (widgetIndex, paramIndex, deviceId) => {
+      const selectedDevice = devices.find(d => d.id === deviceId);
+      setWidgets(w => w.map((widget, wIdx) => {
+        if (wIdx !== widgetIndex) return widget;
+        const updatedParams = widget.parameters.map((param, pIdx) => {
+          if (pIdx === paramIndex) {
+            return {
+              ...param,
+              deviceId: deviceId,
+              name: selectedDevice ? selectedDevice.name : ''
+            };
+          }
+          return param;
+        });
+        return { ...widget, parameters: updatedParams };
+      }));
+  };
+
   const handleNext = () => onNext(widgets);
 
   const formValid = widgets.length > 0 && widgets.every(w => {
@@ -255,11 +271,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     if (w.type === 'image') {
       return w.parameters.length > 0 && w.parameters[0].imageId;
     } else if (w.type === 'map') {
-        // Map widget must have at least one device selected
-        return w.parameters.length > 0 && w.parameters.every(p => p.deviceId);
+        return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
     }
     else {
-      // For graph widgets
       return w.parameters.length > 0 &&
              w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
     }
@@ -312,9 +326,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <option value="pie">Pie Chart</option>
                     <option value="card">Value Card</option>
                     <option value="chemicaldosage">Chemical Dosage</option>
-                    {/* Conditionally render Image option */}
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
-                    <option value="map">Map</option> {/* New Map Widget Option */}
+                    <option value="map">Map</option>
                   </select>
                   <button
                     type="button"
@@ -326,10 +339,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                   </button>
                 </div>
                 
-                {/* Parameters Section - Conditional Rendering */}
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   {w.type === 'image' ? (
-                    // Image Widget Parameters
                     <div className="space-y-4">
                         <h4 className="font-semibold text-gray-700 mb-2">Image Source</h4>
                         <div>
@@ -347,7 +358,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                                 ))}
                             </select>
                         </div>
-
                         <div className="border-t pt-4">
                             <h4 className="font-semibold text-gray-700 mb-2">Or Upload New Image:</h4>
                             <div>
@@ -395,7 +405,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         )}
                     </div>
                   ) : w.type === 'map' ? (
-                    // Map Widget Parameters
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-gray-700">Devices to Display</h4>
@@ -420,7 +429,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                           >
                             <select 
                                 value={p.deviceId} 
-                                onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} 
+                                onChange={e => handleDeviceChange(i, pi, e.target.value)} 
                                 className="border rounded-lg p-2 focus:ring-blue-400"
                             >
                               <option value="">Select Device</option>
@@ -439,7 +448,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                       </div>
                     </div>
                   ) : (
-                    // Graph Widget Parameters (existing logic)
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-gray-700">Parameters</h4>

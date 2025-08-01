@@ -21,6 +21,10 @@ const Popup = dynamic(
   () => import('react-leaflet').then(mod => mod.Popup),
   { ssr: false }
 );
+const Tooltip = dynamic(
+  () => import('react-leaflet').then(mod => mod.Tooltip),
+  { ssr: false }
+);
 const useMap = dynamic(
   () => import('react-leaflet').then(mod => mod.useMap),
   { ssr: false }
@@ -43,25 +47,29 @@ if (typeof window !== 'undefined') {
 
 // Helper component to update map view (zoom/center/bounds)
 function MapUpdater({ bounds, mapInitialized }) {
-  const map = useMap(); // Access the Leaflet map instance
+  const map = useMap();
 
   useEffect(() => {
-    // Explicitly check if map and map.fitBounds exist
     if (map && map.fitBounds && mapInitialized && bounds && bounds.length === 4 && L) {
-      try {
-        const southWest = L.latLng(bounds[0], bounds[1]);
-        const northEast = L.latLng(bounds[2], bounds[3]);
-        const newBounds = L.latLngBounds(southWest, northEast);
+      // Use a timeout to ensure the map container has the correct size before fitting bounds
+      const timeoutId = setTimeout(() => {
+        try {
+          const southWest = L.latLng(bounds[0], bounds[1]);
+          const northEast = L.latLng(bounds[2], bounds[3]);
+          const newBounds = L.latLngBounds(southWest, northEast);
 
-        // Only fit bounds if they are valid and represent an actual area (not a single point or invalid range)
-        if (newBounds.isValid() && !newBounds.isEmpty()) {
-          map.fitBounds(newBounds, { padding: [50, 50], maxZoom: 18 }); // Add maxZoom to prevent over-zooming on single points
-        } else {
-          console.warn('Invalid or empty bounds calculated, map fitBounds skipped.');
+          // Only fit bounds if they are valid and represent an actual area (not a single point or invalid range)
+          if (newBounds.isValid() && !newBounds.isEmpty()) {
+            map.fitBounds(newBounds, { padding: [50, 50], maxZoom: 18 });
+          } else {
+            console.warn('Invalid or empty bounds calculated, map fitBounds skipped.');
+          }
+        } catch (e) {
+          console.error('Error fitting map bounds:', e);
         }
-      } catch (e) {
-        console.error('Error fitting map bounds:', e);
-      }
+      }, 500); // Increased delay to 500ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [map, bounds, mapInitialized]);
 
@@ -75,6 +83,18 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
   const [mapBounds, setMapBounds] = useState(null);
   const [mapInitialized, setMapInitialized] = useState(false);
 
+  const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
+
+  const createCustomIcon = (color) => {
+    if (!L) return null;
+    return L.divIcon({
+      className: 'custom-div-icon',
+      html: `<div style="background-color: ${color}; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  };
+
   useEffect(() => {
     const fetchLocations = async () => {
       setLoading(true);
@@ -86,7 +106,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
         if (!param.deviceId) continue;
 
         try {
-          // Fetch latitude
           const latRes = await fetch('/api/thingsboard/timeseriesdata', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -95,7 +114,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           const latData = await latRes.json();
           const latitude = latData?.latitude?.[0]?.value ? parseFloat(latData.latitude[0].value) : null;
 
-          // Fetch longitude
           const lonRes = await fetch('/api/thingsboard/timeseriesdata', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -104,7 +122,7 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           const lonData = await lonRes.json();
           const longitude = lonData?.longitude?.[0]?.value ? parseFloat(lonData.longitude[0].value) : null;
 
-          const deviceName = param.label || param.name || 'Unknown Device';
+          const deviceName = param.name || 'Unknown Device';
 
           if (latitude !== null && longitude !== null && !isNaN(latitude) && !isNaN(longitude)) {
             fetchedLocations.push({ id: param.deviceId, name: deviceName, lat: latitude, lon: longitude });
@@ -122,17 +140,15 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
       setDeviceLocations(fetchedLocations);
 
       if (hasValidLocation) {
-        // Create a small buffer if only one point to ensure fitBounds works and doesn't overzoom
         if (fetchedLocations.length === 1) {
             const singleLat = fetchedLocations[0].lat;
             const singleLon = fetchedLocations[0].lon;
-            // Create a tiny bounding box around the single point
             setMapBounds([singleLat - 0.001, singleLon - 0.001, singleLat + 0.001, singleLon + 0.001]);
         } else {
             setMapBounds([minLat, minLon, maxLat, maxLon]);
         }
       } else {
-        setMapBounds(null); // Set to null if no valid locations, MapContent will use default center/zoom
+        setMapBounds(null);
       }
       setLoading(false);
     };
@@ -142,7 +158,7 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
     } else {
       setLoading(false);
       setDeviceLocations([]);
-      setMapBounds(null); // No devices or token, use default center/zoom
+      setMapBounds(null);
     }
   }, [parameters, token]);
 
@@ -157,20 +173,16 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Default center and zoom for Jaipur if no devices are present
-  const defaultCenter = [26.9124, 75.7873]; // Jaipur coordinates
-  const defaultZoom = 12; // A city-level zoom
+  const defaultCenter = [26.9124, 75.7873];
+  const defaultZoom = 12;
 
   const MapContent = ({ fullScreen = false }) => {
     if (!L) {
       return <div className="h-full flex items-center justify-center">Loading map...</div>;
     }
 
-    // Determine initial center and zoom:
-    // If mapBounds is null, use defaultCenter and defaultZoom (for Jaipur)
-    // Otherwise, mapUpdater will handle fitBounds
     const initialCenter = mapBounds ? [(mapBounds[0] + mapBounds[2]) / 2, (mapBounds[1] + mapBounds[3]) / 2] : defaultCenter;
-    const initialZoom = mapBounds ? defaultZoom : defaultZoom; // FitBounds will override zoom
+    const initialZoom = mapBounds ? defaultZoom : defaultZoom;
 
     return (
       <MapContainer
@@ -184,15 +196,19 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {deviceLocations.map(device => (
-          <Marker key={device.id} position={[device.lat, device.lon]}>
+        {deviceLocations.map((device, index) => (
+          <Marker
+            key={device.id}
+            position={[device.lat, device.lon]}
+            icon={createCustomIcon(markerColors[index % markerColors.length])}
+          >
+            <Tooltip>{device.name}</Tooltip>
             <Popup>
               <strong>{device.name}</strong><br />
               Lat: {device.lat.toFixed(4)}, Lon: {device.lon.toFixed(4)}
             </Popup>
           </Marker>
         ))}
-        {/* Only render MapUpdater if there are actual bounds to fit */}
         {mapBounds && deviceLocations.length > 0 && (
           <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} />
         )}
@@ -215,7 +231,7 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           </div>
         ) : deviceLocations.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-500">
-            <p>No device locations available. Showing default view.</p> {/* Updated message */}
+            <p>No device locations available. Showing default view.</p>
           </div>
         ) : (
           <MapContent />

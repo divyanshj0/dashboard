@@ -4,9 +4,7 @@ import WaterProperty from './waterproperty';
 import Efficiency from './efficiencydonut';
 import EnergyEfficiency from './energyefficiency';
 import TreatedWaterChart from './treatedwatergraph';
-import FlowRaterChart from './flowratechart';
 import ChemicalChart from './chemicalchart';
-import ChemicalDosage from './chemicalDosage';
 import ImageComponent from './Imagecomponent';
 import MapWidget from './MapWidget';
 
@@ -45,12 +43,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                   return <EnergyEfficiency parameters={w.parameters} label={w.name} token={token} />;
                 case 'line':
                   return <TreatedWaterChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
-                case 'table':
-                  return <FlowRaterChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
                 case 'bar':
                   return <ChemicalChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
-                case 'chemicaldosage':
-                  return <ChemicalDosage title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
                 case 'card':
                   return <WaterProperty title={w.name} parameters={w.parameters} token={token} />;
                 case 'image':
