@@ -1,46 +1,31 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import { FiMaximize, FiX } from 'react-icons/fi';
+import { FaEdit } from 'react-icons/fa';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import 'leaflet-defaulticon-compatibility';
+import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 
-// Dynamically import MapContainer and related components with SSR disabled
-const MapContainer = dynamic(
-  () => import('react-leaflet').then(mod => mod.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import('react-leaflet').then(mod => mod.TileLayer),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import('react-leaflet').then(mod => mod.Marker),
-  { ssr: false }
-);
-const Popup = dynamic(
-  () => import('react-leaflet').then(mod => mod.Popup),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('react-leaflet').then(mod => mod.Tooltip),
-  { ssr: false }
-);
-const useMap = dynamic(
-  () => import('react-leaflet').then(mod => mod.useMap),
-  { ssr: false }
-);
-const Polygon = dynamic(
-  () => import('react-leaflet').then(mod => mod.Polygon),
-  { ssr: false }
-);
+// Dynamic imports with no SSR to avoid Next.js window errors
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+const Tooltip = dynamic(() => import('react-leaflet').then(mod => mod.Tooltip), { ssr: false });
+const Polygon = dynamic(() => import('react-leaflet').then(mod => mod.Polygon), { ssr: false });
+const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
 
-// Import Leaflet library itself only on the client-side
+import MapDrawControl from './MapDrawControl'; // your drawing control component from step 1
+
+// Leaflet and leaflet-draw libraries - only load on client side
 let L;
 if (typeof window !== 'undefined') {
   L = require('leaflet');
-  require('leaflet-draw'); // Import the drawing functionality
-
-  // Fix for default marker icon issues with Webpack - only run on client
+  require('leaflet-draw');
+  // Fix leaflet default icon issues with Webpack/Next.js
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -48,9 +33,6 @@ if (typeof window !== 'undefined') {
     shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   });
 }
-
-
-// Helper component to update map view (zoom/center/bounds)
 function MapUpdater({ bounds, mapInitialized }) {
   const map = useMap();
 
@@ -64,8 +46,6 @@ function MapUpdater({ bounds, mapInitialized }) {
 
           if (newBounds.isValid() && !newBounds.isEmpty()) {
             map.fitBounds(newBounds, { padding: [50, 50], maxZoom: 18 });
-          } else {
-            console.warn('Invalid or empty bounds calculated, map fitBounds skipped.');
           }
         } catch (e) {
           console.error('Error fitting map bounds:', e);
@@ -79,16 +59,17 @@ function MapUpdater({ bounds, mapInitialized }) {
   return null;
 }
 
-export default function MapWidget({ title = "Device Locations", parameters = [], token }) {
+export default function MapWidget({ title = "Device Locations", parameters = [], token, onGeofenceChange }) {
   const [deviceLocations, setDeviceLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [mapBounds, setMapBounds] = useState(null);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [geofence, setGeofence] = useState(parameters[0]?.geofence || null);
 
   const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
 
-  const createCustomIcon = (color) => {
+  const createCustomIcon = useCallback((color) => {
     if (!L) return null;
     return L.divIcon({
       className: 'custom-div-icon',
@@ -96,8 +77,9 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
       iconSize: [24, 24],
       iconAnchor: [12, 12],
     });
-  };
+  }, []);
 
+  // Fetch device locations based on parameters and token
   useEffect(() => {
     const fetchLocations = async () => {
       setLoading(true);
@@ -136,7 +118,8 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
             hasValidLocation = true;
           }
         } catch (error) {
-          console.error(`Error fetching location for device ${param.deviceId}:`, error);
+          // Handle or log errors
+          console.error(`Failed fetching location for device ${param.deviceId}`, error);
         }
       }
 
@@ -144,11 +127,11 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
 
       if (hasValidLocation) {
         if (fetchedLocations.length === 1) {
-            const singleLat = fetchedLocations[0].lat;
-            const singleLon = fetchedLocations[0].lon;
-            setMapBounds([singleLat - 0.001, singleLon - 0.001, singleLat + 0.001, singleLon + 0.001]);
+          const singleLat = fetchedLocations[0].lat;
+          const singleLon = fetchedLocations[0].lon;
+          setMapBounds([singleLat - 0.001, singleLon - 0.001, singleLat + 0.001, singleLon + 0.001]);
         } else {
-            setMapBounds([minLat, minLon, maxLat, maxLon]);
+          setMapBounds([minLat, minLon, maxLat, maxLon]);
         }
       } else {
         setMapBounds(null);
@@ -167,60 +150,67 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
 
   useEffect(() => {
     if (!isOpen) return;
-    function handleKeyDown(event) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') setIsOpen(false);
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
+
+  // Handlers for drawing events
+  const handleCreated = (layer) => {
+    const coords = layer.getLatLngs()[0].map(({ lat, lng }) => [lat, lng]);
+    setGeofence(coords);
+    onGeofenceChange(coords);
+  };
+  const handleEdited = (layers) => {
+    layers.eachLayer(layer => {
+      const coords = layer.getLatLngs()[0].map(({ lat, lng }) => [lat, lng]);
+      setGeofence(coords);
+      onGeofenceChange?.(coords);
+    });
+  };
+  const handleDeleted = () => {
+    setGeofence(null);
+    onGeofenceChange?.(null);
+  };
 
   const defaultCenter = [26.9124, 75.7873];
   const defaultZoom = 12;
 
   const MapContent = ({ fullScreen = false }) => {
-    if (!L) {
-      return <div className="h-full flex items-center justify-center">Loading map...</div>;
-    }
+    if (!L) return <div className="h-full flex items-center justify-center">Loading map...</div>;
 
     const initialCenter = mapBounds ? [(mapBounds[0] + mapBounds[2]) / 2, (mapBounds[1] + mapBounds[3]) / 2] : defaultCenter;
-    const initialZoom = mapBounds ? defaultZoom : defaultZoom;
-
-    const geofence = parameters[0]?.geofence;
-    const boundaryOptions = { color: 'blue', weight: 2, fillOpacity: 0.1 };
+    const initialZoom = defaultZoom;
 
     return (
       <MapContainer
         center={initialCenter}
         zoom={initialZoom}
         scrollWheelZoom={true}
-        style={{ height: '100%', width: '100%', borderRadius: fullScreen ? '0' : '8px' }}
+        style={{ height: '100%', width: '100%', borderRadius: fullScreen ? 0 : 8 }}
         whenReady={() => setMapInitialized(true)}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {deviceLocations.map((device, index) => (
-          <Marker
-            key={device.id}
-            position={[device.lat, device.lon]}
-            icon={createCustomIcon(markerColors[index % markerColors.length])}
-          >
+        {deviceLocations.map((device, idx) => (
+          <Marker key={device.id} position={[device.lat, device.lon]} icon={createCustomIcon(markerColors[idx % markerColors.length])}>
             <Tooltip>{device.name}</Tooltip>
             <Popup>
-              <strong>{device.name}</strong><br />
+              <b>{device.name}</b><br />
               Lat: {device.lat.toFixed(4)}, Lon: {device.lon.toFixed(4)}
             </Popup>
           </Marker>
         ))}
         {geofence && geofence.length > 0 && (
-          <Polygon positions={geofence} pathOptions={{ color: 'red', weight: 3, fillOpacity: 0.2 }} />
+          <Polygon positions={geofence} pathOptions={{ color: 'blue', weight: 3, fillOpacity:0.1 }} />
         )}
-        {mapBounds && deviceLocations.length > 0 && (
-          <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} />
-        )}
+        {mapBounds && deviceLocations.length > 0 && <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} />}
+        <MapDrawControl onCreated={handleCreated} onEdited={handleEdited} onDeleted={handleDeleted} existingGeofence={geofence} />
+
       </MapContainer>
     );
   };
@@ -229,18 +219,19 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
     <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-2 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <p className="text-lg font-medium">{title}</p>
-        <button onClick={() => setIsOpen(true)} title="Fullscreen" className='cursor-pointer'>
-          <FiMaximize size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsOpen(true)} title="Fullscreen" className="p-2 rounded-md bg-gray-100 hover:bg-gray-200">
+            <FiMaximize size={20} />
+          </button>
+        </div>
       </div>
+
       <div className="flex-grow min-h-[150px]">
         {loading ? (
-          <div className="h-full flex items-center justify-center">
-            <p>Loading map data...</p>
-          </div>
+          <div className="h-full flex items-center justify-center">Loading map data...</div>
         ) : deviceLocations.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-500">
-            <p>No device locations available. Showing default view.</p>
+            No device locations available. Showing default view.
           </div>
         ) : (
           <MapContent />
@@ -248,15 +239,15 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
       </div>
 
       {isOpen && createPortal(
-        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
           <div className="flex justify-between items-center p-4 border-b bg-gray-50">
             <h2 className="text-xl font-semibold">{title} - Full View</h2>
-            <button onClick={() => setIsOpen(false)} className="text-lg">
+            <button onClick={() => setIsOpen(false)} className="text-lg p-1 rounded hover:bg-gray-200">
               <FiX size={24} />
             </button>
           </div>
           <div className="flex-grow">
-            <MapContent fullScreen={true} />
+            <MapContent fullScreen />
           </div>
         </div>,
         document.body
