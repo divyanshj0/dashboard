@@ -21,8 +21,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
       className="layout overflow-visible"
       layouts={{ lg: layout }}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-      cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
-      rowHeight={100}
+      cols={{ lg: 24, md: 16, sm: 12, xs: 8 }}
+      rowHeight={70}
       isDraggable={saveLayout}
       isResizable={saveLayout}
       onLayoutChange={(newLayout) => {

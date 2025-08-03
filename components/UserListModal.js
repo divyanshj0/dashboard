@@ -1,11 +1,14 @@
-import { FiTrash, FiRefreshCw } from 'react-icons/fi';
+import { FiTrash, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { MdDashboardCustomize } from "react-icons/md";
 import { FaUserSlash ,FaUser} from "react-icons/fa";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+
 export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onCreateDashboard }) {
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+
   useEffect(() => {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
@@ -15,6 +18,18 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  const filteredUsers = users.filter(user => {
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+    const lowerSearchTerm = searchTerm.toLowerCase();
+
+    return (
+      fullName.includes(lowerSearchTerm) ||
+      user.firstName?.toLowerCase().includes(lowerSearchTerm) ||
+      user.lastName?.toLowerCase().includes(lowerSearchTerm) ||
+      user.email?.toLowerCase().includes(lowerSearchTerm)
+    );
+  });
 
   const handleCreateDashboard = async (userId, userName) => {
     onCreateDashboard();
@@ -51,24 +66,34 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70  flex items-center justify-center">
-      <div className="bg-white rounded-lg p-6 max-w-lg w-full relative">
+      <div className="bg-white rounded-lg p-6 max-w-lg w-full h-[80vh] relative">
         <button onClick={onClose} className="absolute right-4 top-4 text-3xl cursor-pointer hover:text-red-600 hover:scale-105">&times;</button>
         <div className='flex gap-5 items-center mb-4'>
           <h2 className="text-xl font-semibold  text-blue-700">Users for Customer</h2>
           <button onClick={onRefresh} className="p-1 hover:bg-gray-300 cursor-pointer hover:scale-105 text-black rounded"><FiRefreshCw size={20} /></button>
         </div>
+        <div className="relative mb-4">
+          <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         {loading && <p className="text-gray-500">Loading users...</p>}
-        {!loading && users.length === 0 && (
-          <p className="text-gray-500">No users found.</p>
+        {!loading && filteredUsers.length === 0 && (
+          <p className="text-gray-500">{searchTerm ? `No users found matching "${searchTerm}".` : "No users found."}</p>
         )}
-        {!loading && users.length > 0 && (
-          <ul className="space-y-2 max-h-64 overflow-y-auto">
-            {users.map(user => (
+        {!loading && filteredUsers.length > 0 && (
+          <ul className="space-y-4 h-[80%] overflow-y-auto">
+            {filteredUsers.map(user => (
               <li key={user.id.id} className="border p-3 rounded flex justify-between items-center">
                 <div>
                   <p className="font-medium">{user.firstName} {user.lastName?user.lastName:''}</p>
-                  <p className="text-sm text-gray-600">{user.email}</p>
-                  <p className="text-xs text-gray-500">Status: {user.enabled ? 'Active' : 'Inactive'}</p>
+                  <p className="text-sm text-gray-600">Email: {user.email}</p>
+                  <p className="text-sm text-gray-500">Status: {user.enabled ? 'Active' : 'Inactive'}</p>
                 </div>
                 <div className='flex items-center gap-5'>
                   <button

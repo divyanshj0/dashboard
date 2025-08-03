@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export default function AddDeviceModal({ device, onChange, onSubmit, save, onClose }) {
-  const [activeStep, setActiveStep] = useState(true); // Step 1 = true, Step 2 = false
+  const [activeStep, setActiveStep] = useState(true);
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -12,9 +12,19 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-  const isStep1Valid = device.name.trim() !== '' && device.label.trim() !== '';
+  
+  const isStep1Valid = device.name.trim() !== '';
+  
+  // New validation rule: if clientId is provided, username and password are required
+  const isCredentialsValid = 
+    !device.clientId || (device.clientId && device.username.trim() !== '' && device.password.trim() !== '');
+
+  const isFormValid = isStep1Valid && isCredentialsValid;
+
   const handleSubmit = () => {
-    onSubmit();
+    if (isFormValid) {
+      onSubmit();
+    }
   };
 
   return (
@@ -49,10 +59,10 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
             <>
               {['name', 'label'].map(field => (
                 <div key={field}>
-                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} {field!=='label'?'*':''}</label>
+                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} {field==='name'?'*':''}</label>
                   <input
                     type="text"
-                    required={field!=='label'}
+                    required={field==='name'}
                     placeholder={`Enter device ${field}`}
                     value={device[field]}
                     onChange={(e) => onChange(field, e.target.value)}
@@ -65,10 +75,10 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
             <>
               {['clientId', 'username', 'password'].map(field => (
                 <div key={field}>
-                  <label className="block mb-1 font-medium text-gray-700 capitalize">{field}</label>
+                  <label className="block mb-1 font-medium text-gray-700 capitalize">{field}{!isCredentialsValid && ' *'}</label>
                   <input
                     type={field === 'password' ? 'password' : 'text'}
-                    placeholder={`Enter ${field} (optional)`}
+                    placeholder={`Enter ${field} ${!isCredentialsValid?'':'(optional)'}`}
                     value={device[field] || ''}
                     onChange={(e) => onChange(field, e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded"
@@ -76,9 +86,11 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
                   />
                 </div>
               ))}
+              {device.clientId && (!device.username.trim() || !device.password.trim()) && (
+                  <p className="text-red-500 text-sm mt-1">Username and Password are required when Client ID is set.</p>
+              )}
             </>
           )}
-
           {/* Buttons */}
           <div className="flex justify-end gap-3 pt-4">
             <button
@@ -91,16 +103,16 @@ export default function AddDeviceModal({ device, onChange, onSubmit, save, onClo
             <button
               type="button"
               onClick={() => setActiveStep(!activeStep)}
-              disabled={save ||!isStep1Valid}
-              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save|| !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={save || !isStep1Valid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save || !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {activeStep ? "Next" : "Back"}
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={save ||!isStep1Valid}
-              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save|| !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={save || !isFormValid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save || !isFormValid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {save ? "Saving..." : "Add"}
             </button>
