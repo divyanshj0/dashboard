@@ -3,13 +3,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import { FiMaximize, FiX } from 'react-icons/fi';
-import { FaEdit } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
-import 'leaflet-defaulticon-compatibility';
-import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 
-// Dynamic imports with no SSR to avoid Next.js window errors
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
@@ -17,47 +13,30 @@ const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ss
 const Tooltip = dynamic(() => import('react-leaflet').then(mod => mod.Tooltip), { ssr: false });
 const Polygon = dynamic(() => import('react-leaflet').then(mod => mod.Polygon), { ssr: false });
 const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
-
-import MapDrawControl from './MapDrawControl'; // your drawing control component from step 1
-
-// Leaflet and leaflet-draw libraries - only load on client side
-let L;
-if (typeof window !== 'undefined') {
-  L = require('leaflet');
-  require('leaflet-draw');
-  // Fix leaflet default icon issues with Webpack/Next.js
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  });
-}
-function MapUpdater({ bounds, mapInitialized }) {
+const MapDrawControl = dynamic(() => import('./MapDrawControl'), { ssr: false });
+const MapUpdater = dynamic(() => Promise.resolve(({ children, ...props }) => {
   const map = useMap();
-
   useEffect(() => {
-    if (map && map.fitBounds && mapInitialized && bounds && bounds.length === 4 && L) {
+    if (map && map.fitBounds && props.L && props.mapInitialized && props.bounds && props.bounds.length === 4) {
       const timeoutId = setTimeout(() => {
         try {
-          const southWest = L.latLng(bounds[0], bounds[1]);
-          const northEast = L.latLng(bounds[2], bounds[3]);
-          const newBounds = L.latLngBounds(southWest, northEast);
-
-          if (newBounds.isValid() && !newBounds.isEmpty()) {
+          const southWest = props.L.latLng(props.bounds[0], props.bounds[1]);
+          const northEast = props.L.latLng(props.bounds[2], props.bounds[3]);
+          const newBounds = props.L.latLngBounds(southWest, northEast);
+          if (newBounds.isValid()) {
             map.fitBounds(newBounds, { padding: [50, 50], maxZoom: 18 });
           }
         } catch (e) {
           console.error('Error fitting map bounds:', e);
         }
       }, 300);
-
       return () => clearTimeout(timeoutId);
     }
-  }, [map, bounds, mapInitialized]);
-
+  }, [map, props.bounds, props.mapInitialized, props.L]);
   return null;
-}
+}), { ssr: false });
+
+const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
 
 export default function MapWidget({ title = "Device Locations", parameters = [], token, onGeofenceChange }) {
   const [deviceLocations, setDeviceLocations] = useState([]);
@@ -67,11 +46,25 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
   const [mapInitialized, setMapInitialized] = useState(false);
   const [geofence, setGeofence] = useState(parameters[0]?.geofence || null);
 
-  const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
+  const leafletRef = useRef(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !leafletRef.current) {
+      const L = require('leaflet');
+      require('leaflet-draw');
+      require('leaflet-defaulticon-compatibility');
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+      });
+      leafletRef.current = L;
+    }
+  }, []);
   const createCustomIcon = useCallback((color) => {
+    const L = leafletRef.current;
     if (!L) return null;
-    return L.divIcon({
+    return new L.DivIcon({
       className: 'custom-div-icon',
       html: `<div style="background-color: ${color}; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
       iconSize: [24, 24],
@@ -86,10 +79,14 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
       const fetchedLocations = [];
       let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
       let hasValidLocation = false;
-
+      if (!token || !parameters.length) {
+        setLoading(false);
+        setDeviceLocations([]);
+        setMapBounds(null);
+        return;
+      }
       for (const param of parameters) {
         if (!param.deviceId) continue;
-
         try {
           const latRes = await fetch('/api/thingsboard/timeseriesdata', {
             method: 'POST',
@@ -98,7 +95,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           });
           const latData = await latRes.json();
           const latitude = latData?.latitude?.[0]?.value ? parseFloat(latData.latitude[0].value) : null;
-
           const lonRes = await fetch('/api/thingsboard/timeseriesdata', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -106,9 +102,7 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           });
           const lonData = await lonRes.json();
           const longitude = lonData?.longitude?.[0]?.value ? parseFloat(lonData.longitude[0].value) : null;
-
           const deviceName = param.name || 'Unknown Device';
-
           if (latitude !== null && longitude !== null && !isNaN(latitude) && !isNaN(longitude)) {
             fetchedLocations.push({ id: param.deviceId, name: deviceName, lat: latitude, lon: longitude });
             minLat = Math.min(minLat, latitude);
@@ -118,13 +112,10 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
             hasValidLocation = true;
           }
         } catch (error) {
-          // Handle or log errors
           console.error(`Failed fetching location for device ${param.deviceId}`, error);
         }
       }
-
       setDeviceLocations(fetchedLocations);
-
       if (hasValidLocation) {
         if (fetchedLocations.length === 1) {
           const singleLat = fetchedLocations[0].lat;
@@ -141,10 +132,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
 
     if (token && parameters.length > 0) {
       fetchLocations();
-    } else {
-      setLoading(false);
-      setDeviceLocations([]);
-      setMapBounds(null);
     }
   }, [parameters, token]);
 
@@ -179,11 +166,10 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
   const defaultZoom = 12;
 
   const MapContent = ({ fullScreen = false }) => {
+    const L = leafletRef.current;
     if (!L) return <div className="h-full flex items-center justify-center">Loading map...</div>;
-
     const initialCenter = mapBounds ? [(mapBounds[0] + mapBounds[2]) / 2, (mapBounds[1] + mapBounds[3]) / 2] : defaultCenter;
     const initialZoom = defaultZoom;
-
     return (
       <MapContainer
         center={initialCenter}
@@ -208,9 +194,8 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
         {geofence && geofence.length > 0 && (
           <Polygon positions={geofence} pathOptions={{ color: 'blue', weight: 3, fillOpacity:0.1 }} />
         )}
-        {mapBounds && deviceLocations.length > 0 && <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} />}
-        <MapDrawControl onCreated={handleCreated} onEdited={handleEdited} onDeleted={handleDeleted} existingGeofence={geofence} />
-
+        {mapBounds && deviceLocations.length > 0 && <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} L={L} />}
+        <MapDrawControl onCreated={handleCreated} onEdited={handleEdited} onDeleted={handleDeleted} existingGeofence={geofence} L={L}/>
       </MapContainer>
     );
   };
@@ -225,7 +210,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           </button>
         </div>
       </div>
-
       <div className="flex-grow min-h-[150px]">
         {loading ? (
           <div className="h-full flex items-center justify-center">Loading map data...</div>
@@ -237,7 +221,6 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           <MapContent />
         )}
       </div>
-
       {isOpen && createPortal(
         <div className="fixed inset-0 z-50 flex flex-col bg-white">
           <div className="flex justify-between items-center p-4 border-b bg-gray-50">

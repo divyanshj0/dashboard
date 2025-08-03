@@ -1,15 +1,13 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet-draw';
 import { useMap } from 'react-leaflet';
 // This component adds drawing controls and listens to leaflet-draw events
-export default function MapDrawControl({ onCreated, onEdited, onDeleted, existingGeofence }) {
+export default function MapDrawControl({ onCreated, onEdited, onDeleted, existingGeofence, L }) {
   const drawnItems = useRef(new L.FeatureGroup());
   const map = useMap();
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !L) return;
 
     map.addLayer(drawnItems.current);
 
@@ -66,7 +64,7 @@ export default function MapDrawControl({ onCreated, onEdited, onDeleted, existin
       map.removeControl(drawControl);
       map.removeLayer(drawnItems.current);
     };
-  }, [map, onCreated, onEdited, onDeleted, existingGeofence]);
+  }, [map, onCreated, onEdited, onDeleted, existingGeofence, L]);
 
   return null;
 }

@@ -13,7 +13,7 @@ import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token,handlegeofence}) {
+export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token, onGeofenceChange}) {
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
 
   return (
@@ -50,7 +50,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 case 'image':
                   return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
                 case 'map':
-                  return <MapWidget title={w.name} parameters={w.parameters} token={token} onGeofenceChange={(geofence)=>{handlegeofence(geofence,w.id)}} />;
+                  return <MapWidget title={w.name} parameters={w.parameters} token={token} onGeofenceChange={(geofence) => { onGeofenceChange(geofence, w.id) }} />;
                 default:
                   return (
                     <div className="text-center">
