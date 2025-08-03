@@ -13,7 +13,7 @@ import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token }) {
+export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token}) {
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
 
   return (
@@ -49,7 +49,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                   return <WaterProperty title={w.name} parameters={w.parameters} token={token} />;
                 case 'image':
                   return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
-                case 'map': // New case for Map Widget
+                case 'map':
                   return <MapWidget title={w.name} parameters={w.parameters} token={token} />;
                 default:
                   return (

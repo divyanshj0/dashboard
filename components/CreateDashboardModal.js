@@ -5,6 +5,96 @@ import { FiPlus, FiTrash2, FiX, FiUploadCloud } from 'react-icons/fi';
 import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
+import dynamic from 'next/dynamic';
+import 'leaflet-draw/dist/leaflet.draw.css';
+
+const MapContainer = dynamic(
+  () => import('react-leaflet').then(mod => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import('react-leaflet').then(mod => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-leaflet').then(mod => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import('react-leaflet').then(mod => mod.Popup),
+  { ssr: false }
+);
+const MapDrawControl = dynamic(
+  () => import('./MapDrawControl'),
+  { ssr: false }
+);
+
+const MapDrawingModal = ({ onClose, onSave, devices }) => {
+  const [drawnLayers, setDrawnLayers] = useState([]);
+  const defaultCenter = [26.9124, 75.7873];
+  const defaultZoom = 12;
+
+  const handleCreated = (layer) => {
+    setDrawnLayers([layer]);
+  };
+
+  const handleEdited = (layers) => {
+    const updatedLayers = [];
+    layers.eachLayer(layer => updatedLayers.push(layer));
+    setDrawnLayers(updatedLayers);
+  };
+
+  const handleDeleted = () => {
+    setDrawnLayers([]);
+  };
+
+  const handleSave = () => {
+    if (drawnLayers.length > 0) {
+      const drawnLayer = drawnLayers[0];
+      const coordinates = drawnLayer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng]);
+      onSave(coordinates);
+    } else {
+      onSave(null);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="bg-white rounded-lg p-6 max-w-5xl w-full relative h-[90vh] flex flex-col">
+        <h2 className="text-xl font-semibold mb-4">Draw Geofence</h2>
+        <div className="flex-grow relative">
+          <MapContainer
+            center={defaultCenter}
+            zoom={defaultZoom}
+            scrollWheelZoom={true}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {devices.map(device => (
+              <Marker key={device.deviceId} position={[26.9124, 75.7873]}>
+                <Popup>{device.name}</Popup>
+              </Marker>
+            ))}
+            <MapDrawControl
+              onCreated={handleCreated}
+              onEdited={handleEdited}
+              onDeleted={handleDeleted}
+            />
+          </MapContainer>
+        </div>
+        <div className="flex justify-end space-x-4 mt-4">
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+          <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded">Save Geofence</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
   const [devices, setDevices] = useState([]);
@@ -18,7 +108,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [newImageFile, setNewImageFile] = useState(null);
   const [newImageTitle, setNewImageTitle] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const Tb_Url=process.env.NEXT_PUBLIC_TB_URL
+  const Tb_Url="https://demo.thingsboard.io"
+  const [showDrawingModal, setShowDrawingModal] = useState(false);
+  const [currentWidgetIndex, setCurrentWidgetIndex] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -415,6 +507,16 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         >
                           <FiPlus size={18} className="mr-1" /> Add Device
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDrawingModal(true);
+                            setCurrentWidgetIndex(i);
+                          }}
+                          className="px-2 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200"
+                        >
+                          Add Geofencing
+                        </button>
                       </div>
                       {w.parameters.length === 0 && (
                         <div className="text-xs text-gray-500 mb-4">Add at least one device to display on the map.</div>
@@ -555,6 +657,29 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           </button>
         </div>
       </div>
+      {showDrawingModal && (
+        <MapDrawingModal
+          onClose={() => setShowDrawingModal(false)}
+          onSave={(coordinates) => {
+            if (currentWidgetIndex !== null) {
+              setWidgets(w => w.map((widget, idx) => {
+                if (idx === currentWidgetIndex) {
+                  return {
+                    ...widget,
+                    parameters: widget.parameters.map(p => ({
+                      ...p,
+                      geofence: coordinates,
+                    }))
+                  };
+                }
+                return widget;
+              }));
+            }
+            setShowDrawingModal(false);
+          }}
+          devices={widgets[currentWidgetIndex]?.parameters || []}
+        />
+      )}
     </div>
   );
 }

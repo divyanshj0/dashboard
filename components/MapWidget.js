@@ -29,11 +29,16 @@ const useMap = dynamic(
   () => import('react-leaflet').then(mod => mod.useMap),
   { ssr: false }
 );
+const Polygon = dynamic(
+  () => import('react-leaflet').then(mod => mod.Polygon),
+  { ssr: false }
+);
 
 // Import Leaflet library itself only on the client-side
 let L;
 if (typeof window !== 'undefined') {
   L = require('leaflet');
+  require('leaflet-draw'); // Import the drawing functionality
 
   // Fix for default marker icon issues with Webpack - only run on client
   delete L.Icon.Default.prototype._getIconUrl;
@@ -51,14 +56,12 @@ function MapUpdater({ bounds, mapInitialized }) {
 
   useEffect(() => {
     if (map && map.fitBounds && mapInitialized && bounds && bounds.length === 4 && L) {
-      // Use a timeout to ensure the map container has the correct size before fitting bounds
       const timeoutId = setTimeout(() => {
         try {
           const southWest = L.latLng(bounds[0], bounds[1]);
           const northEast = L.latLng(bounds[2], bounds[3]);
           const newBounds = L.latLngBounds(southWest, northEast);
 
-          // Only fit bounds if they are valid and represent an actual area (not a single point or invalid range)
           if (newBounds.isValid() && !newBounds.isEmpty()) {
             map.fitBounds(newBounds, { padding: [50, 50], maxZoom: 18 });
           } else {
@@ -67,7 +70,7 @@ function MapUpdater({ bounds, mapInitialized }) {
         } catch (e) {
           console.error('Error fitting map bounds:', e);
         }
-      }, 500); // Increased delay to 500ms
+      }, 300);
 
       return () => clearTimeout(timeoutId);
     }
@@ -184,6 +187,9 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
     const initialCenter = mapBounds ? [(mapBounds[0] + mapBounds[2]) / 2, (mapBounds[1] + mapBounds[3]) / 2] : defaultCenter;
     const initialZoom = mapBounds ? defaultZoom : defaultZoom;
 
+    const geofence = parameters[0]?.geofence;
+    const boundaryOptions = { color: 'blue', weight: 2, fillOpacity: 0.1 };
+
     return (
       <MapContainer
         center={initialCenter}
@@ -209,6 +215,9 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
             </Popup>
           </Marker>
         ))}
+        {geofence && geofence.length > 0 && (
+          <Polygon positions={geofence} pathOptions={{ color: 'red', weight: 3, fillOpacity: 0.2 }} />
+        )}
         {mapBounds && deviceLocations.length > 0 && (
           <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} />
         )}
