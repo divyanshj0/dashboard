@@ -520,9 +520,14 @@ export default function Dashboard() {
         )}
 
         {/* Footer */}
-        <div className="bg-blue-100 text-center mx-4 mt-6 py-4 rounded-md">
-          <p className="text-lg text-black">© 2025 All rights reserved. Developed and managed by TheElitePro</p>
-        </div>
+        <div className="bg-blue-100 text-center mx-2 md:mx-4  py-4 rounded-lg">
+        <p className="text-xl text-black">
+          © 2025 All rights reserved.
+          <span className="mx-3">
+            Developed and managed by <span className="font-bold text-2xl text-[#fecb02]"><span className="text-[#0c60a6]">TheElite</span>Pro</span>
+          </span>
+        </p>
+      </div>
       </main>
 
       {/* Modals */}

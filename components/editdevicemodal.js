@@ -1,7 +1,7 @@
 // components/editdevicemodal.js
 import { useEffect, useState } from "react";
 
-export default function EditDeviceModal({ device, onSubmit, save, onClose }) { // Removed onChange prop
+export default function EditDeviceModal({ device, onSubmit, save, onClose }) {
   const [activeStep, setActiveStep] = useState(true);
   const [localCreds, setLocalCreds] = useState({
     name: '',
@@ -50,13 +50,18 @@ export default function EditDeviceModal({ device, onSubmit, save, onClose }) { /
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  // Validation logic
+  const isStep1Valid = localCreds.name.trim() !== '';
+  const isCredentialsValid = 
+    !localCreds.clientId || (localCreds.clientId && localCreds.username.trim() !== '' && localCreds.password.trim() !== '');
+  const isFormValid = isStep1Valid && isCredentialsValid;
+
+
   const handleSubmit = () => {
-    if (!localCreds.name || !localCreds.label) {
-      alert("Please fill in required fields: Name & Label.");
-      return;
+    // Rely on the button's disabled state, but for safety, also check here.
+    if (isFormValid) {
+      onSubmit(localCreds);
     }
-    // Pass the entire localCreds object to the parent's onSubmit
-    onSubmit(localCreds);
   };
 
   if (!device) return null;
@@ -96,10 +101,10 @@ export default function EditDeviceModal({ device, onSubmit, save, onClose }) { /
             <>
               {["name", "label"].map((field) => (
                 <div key={field}>
-                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} *</label>
+                  <label className="block mb-1 font-medium text-gray-700">{field.toUpperCase()} {field === 'name' ? '*' : ''}</label>
                   <input
                     type="text"
-                    required
+                    required={field === 'name'}
                     value={localCreds[field] || ""}
                     onChange={(e) => setLocalCreds((prev) => ({ ...prev, [field]: e.target.value }))}
                     className="w-full p-2 border border-gray-300 rounded"
@@ -113,7 +118,7 @@ export default function EditDeviceModal({ device, onSubmit, save, onClose }) { /
             <>
               {["clientId", "username", "password"].map((field) => (
                 <div key={field}>
-                  <label className="block mb-1 font-medium text-gray-700 capitalize">{field}</label>
+                  <label className="block mb-1 font-medium text-gray-700 capitalize">{field}{!isCredentialsValid && ' *'}</label>
                   <input
                     type="text"
                     value={localCreds[field] || ""}
@@ -124,6 +129,9 @@ export default function EditDeviceModal({ device, onSubmit, save, onClose }) { /
                   />
                 </div>
               ))}
+              {localCreds.clientId && (!localCreds.username.trim() || !localCreds.password.trim()) && (
+                  <p className="text-red-500 text-sm mt-1">Username and Password are required when Client ID is set.</p>
+              )}
             </>
           )}
 
@@ -139,16 +147,16 @@ export default function EditDeviceModal({ device, onSubmit, save, onClose }) { /
             <button
               type="button"
               onClick={() => setActiveStep(!activeStep)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200"
+              disabled={save || !isStep1Valid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save || !isStep1Valid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {activeStep ? "Next" : "Back"}
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={save}
-              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              disabled={save || !isFormValid}
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${save || !isFormValid ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {save ? "Saving..." : "Save"}
             </button>

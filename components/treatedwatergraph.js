@@ -84,7 +84,7 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function TreatedWaterChart({ title = "", parameters = [], token, saveLayout }) {
+export default function TreatedWaterChart({ title = "", parameters = [], token, saveLayout,onLatestTimestampChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -96,7 +96,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
   const fetchTimeSeriesData = async () => {
     setLoading(true);
     const result = {};
-    
+    let latestTimestamp = 0;
     try {
       let startTs, endTs;
       const now = Date.now();
@@ -135,16 +135,25 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
         });
 
         const data = await res.json();
-
-        result[compositeKey] = Array.isArray(data[param.key])
-          ? data[param.key].map((item) => ({
-              ts: Number(item.ts),
-              value: parseFloat(item.value),
-            }))
+        const dataForParam = Array.isArray(data[param.key])
+          ? data[param.key].map((item) => {
+              const ts = Number(item.ts);
+              if (ts > latestTimestamp) {
+                latestTimestamp = ts; // Update latest timestamp
+              }
+              return {
+                ts: ts,
+                value: parseFloat(item.value),
+              };
+            })
           : [];
+        result[compositeKey] = dataForParam;
       }
       
       setTimeSeries(result);
+      if (latestTimestamp > 0) {
+        onLatestTimestampChange(latestTimestamp); // Call the prop with the latest timestamp
+      }
     } catch (error) {
       console.error('Failed to fetch time series data', error);
     } finally {

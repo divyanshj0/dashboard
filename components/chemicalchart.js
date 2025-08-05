@@ -63,7 +63,7 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function ChemicalChart({ title = "", parameters = [], token, saveLayout }) {
+export default function ChemicalChart({ title = "", parameters = [], token, saveLayout, onLatestTimestampChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -71,11 +71,11 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
-  const[showCustomField,setShowCustomField]=useState(false)
+  const [showCustomField, setShowCustomField] = useState(false)
   const fetchTimeSeriesData = async () => {
     setLoading(true);
     const result = {};
-
+    let latestTimestamp = 0;
     try {
       let startTs, endTs;
       const now = Date.now();
@@ -112,18 +112,26 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
             endTs: endTs,
           }),
         });
-
         const data = await res.json();
-
-        result[compositeKey] = Array.isArray(data[param.key])
-          ? data[param.key].map((item) => ({
-            ts: Number(item.ts),
-            value: parseFloat(item.value),
-          }))
+        const dataForParam = Array.isArray(data[param.key])
+          ? data[param.key].map((item) => {
+            const ts = Number(item.ts);
+            if (ts > latestTimestamp) {
+              latestTimestamp = ts; // Update latest timestamp
+            }
+            return {
+              ts: ts,
+              value: parseFloat(item.value),
+            };
+          })
           : [];
+        result[compositeKey] = dataForParam;
       }
 
       setTimeSeries(result);
+      if (latestTimestamp > 0) {
+        onLatestTimestampChange(latestTimestamp); // Call the prop with the latest timestamp
+      }
     } catch (error) {
       console.error('Failed to fetch time series data', error);
     } finally {
@@ -223,15 +231,15 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
               onClick={() => handleViewChange('hourly')}
               aria-label="Daily view"
               className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'hourly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                } ${showCustomField?'hidden':''}`}
+                } ${showCustomField ? 'hidden' : ''}`}
             >
               D
             </button>
             <button
               onClick={() => handleViewChange('weekly')}
               aria-label="Weekly view"
-              className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'weekly'? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                } ${showCustomField?'hidden':''}`}
+              className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'weekly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
+                } ${showCustomField ? 'hidden' : ''}`}
             >
               W
             </button>
@@ -264,7 +272,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
                   max={new Date().toISOString().split('T')[0]}
                 />
                 <button
-                  onClick={()=>{setShowCustomField(false)}}
+                  onClick={() => { setShowCustomField(false) }}
                   className="bg-blue-500 text-white px-2 py-1 rounded text-sm"
                   aria-label="Apply custom date range"
                 >

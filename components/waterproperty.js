@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const WaterProperty = ({ title = "", parameters = [], token }) => {
+const WaterProperty = ({ title = "", parameters = [], token, onLatestTimestampChange }) => {
   const [fetchedValues, setFetchedValues] = useState({});
   const [loadingData, setLoadingData] = useState(true);
 
@@ -14,6 +14,7 @@ const WaterProperty = ({ title = "", parameters = [], token }) => {
 
       setLoadingData(true);
       const newFetchedValues = {};
+      let latestTimestamp = 0;
       const fetchPromises = parameters.map(async (param) => {
         try {
           const res = await fetch('/api/thingsboard/timeseriesdata', {
@@ -39,10 +40,13 @@ const WaterProperty = ({ title = "", parameters = [], token }) => {
           const latestEntry = Array.isArray(data[param.key]) && data[param.key].length > 0
             ? data[param.key][0]
             : null;
-
+          const ts = latestEntry ? Number(latestEntry.ts) : 0;
+          if (ts > latestTimestamp) {
+            latestTimestamp = ts;
+          }
           newFetchedValues[param.key] = {
             value: latestEntry ? parseFloat(latestEntry.value) : null,
-            unit: param.unit || '' 
+            unit: param.unit || ''
           };
 
         } catch (error) {
@@ -54,6 +58,9 @@ const WaterProperty = ({ title = "", parameters = [], token }) => {
       await Promise.all(fetchPromises);
       setFetchedValues(newFetchedValues);
       setLoadingData(false);
+      if (latestTimestamp > 0) {
+        onLatestTimestampChange(latestTimestamp); // Call the prop with the latest timestamp
+      }
     };
 
     fetchLatestValues();
@@ -64,7 +71,7 @@ const WaterProperty = ({ title = "", parameters = [], token }) => {
     if (loadingData) return '...';
     if (!dataEntry || dataEntry.value === null || dataEntry.value === undefined) return 'N/A';
 
-    if (key.toLowerCase().includes('pumpstatus') || key.toLowerCase() === 'pump') { 
+    if (key.toLowerCase().includes('pumpstatus') || key.toLowerCase() === 'pump') {
       return dataEntry.value ? 'Running' : 'Stopped';
     }
 
@@ -93,10 +100,10 @@ const WaterProperty = ({ title = "", parameters = [], token }) => {
         </div>
       )}
       {parameters.length === 0 && !loadingData && (
-         <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
-           <p className="text-lg font-medium">{title}</p>
-           <p className="text-sm text-gray-500">No properties configured for this widget.</p>
-         </div>
+        <div className="flex-1 min-w-[200px] p-2 bg-white rounded-md shadow-md">
+          <p className="text-lg font-medium">{title}</p>
+          <p className="text-sm text-gray-500">No properties configured for this widget.</p>
+        </div>
       )}
     </div>
   );

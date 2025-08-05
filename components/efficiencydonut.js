@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B']; // Blue, Green, Amber
 
-const Efficiency = ({ parameters = [], token, label = "" }) => {
+const Efficiency = ({ parameters = [], token, label = "" ,onLatestTimestampChange}) => {
   const [latestValue, setLatestValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,7 +13,7 @@ const Efficiency = ({ parameters = [], token, label = "" }) => {
     const fetchLatestValue = async () => {
       setLoading(true);
       setError(null);
-      
+      let latestTimestamp = 0;
       try {
         if (!parameters.length || !token) {
           throw new Error('Missing parameters or token');
@@ -39,8 +39,15 @@ const Efficiency = ({ parameters = [], token, label = "" }) => {
 
         const data = await res.json();
         const value = data[param.key]?.[0]?.value;
+        const ts = Number(data[param.key]?.[0]?.ts);
+              if (ts > latestTimestamp) {
+                latestTimestamp = ts;
+        }
 
         setLatestValue(value ? parseFloat(value) : 0);
+        if (latestTimestamp > 0) {
+        onLatestTimestampChange(latestTimestamp);
+      }
       } catch (err) {
         console.error('Error fetching efficiency data:', err);
         setError(err.message);

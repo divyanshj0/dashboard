@@ -151,11 +151,14 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
     onGeofenceChange(coords);
   };
   const handleEdited = (layers) => {
-    layers.eachLayer(layer => {
-      const coords = layer.getLatLngs()[0].map(({ lat, lng }) => [lat, lng]);
+    if (layers && typeof layers.getLatLngs === 'function') {
+      // This case handles a single layer being passed
+      const coords = layers.getLatLngs()[0].map(({ lat, lng }) => [lat, lng]);
       setGeofence(coords);
       onGeofenceChange?.(coords);
-    });
+    } else {
+      console.error('Expected valid layers object for editing, but received:', layers);
+    }
   };
   const handleDeleted = () => {
     setGeofence(null);

@@ -1,4 +1,5 @@
-'use client';
+// File: divyanshj0/dashboard/dashboard-dfbfd157f2a5332d4f49cf03728f87f60a7e34e8/components/WidgetRenderer.js
+
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import WaterProperty from './waterproperty';
 import Efficiency from './efficiencydonut';
@@ -13,7 +14,7 @@ import 'react-resizable/css/styles.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token, onGeofenceChange}) {
+export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSave, token, onGeofenceChange, onLatestTimestampChange }) {
   if (!config || !config.widgets || !Array.isArray(config.widgets)) return null;
 
   return (
@@ -38,19 +39,19 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
             {(() => {
               switch (w.type) {
                 case 'donut':
-                  return <Efficiency parameters={w.parameters} label={w.name} token={token} />;
+                  return <Efficiency parameters={w.parameters} label={w.name} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'pie':
-                  return <EnergyEfficiency parameters={w.parameters} label={w.name} token={token} />;
+                  return <EnergyEfficiency parameters={w.parameters} label={w.name} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'line':
-                  return <TreatedWaterChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
+                  return <TreatedWaterChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'bar':
-                  return <ChemicalChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} />;
+                  return <ChemicalChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'card':
-                  return <WaterProperty title={w.name} parameters={w.parameters} token={token} />;
+                  return <WaterProperty title={w.name} parameters={w.parameters} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'image':
                   return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
                 case 'map':
-                  return <MapWidget title={w.name} parameters={w.parameters} token={token} onGeofenceChange={(geofence) => { onGeofenceChange(geofence, w.id) }} />;
+                  return <MapWidget title={w.name} parameters={w.parameters} token={token} onGeofenceChange={onGeofenceChange} />;
                 default:
                   return (
                     <div className="text-center">
