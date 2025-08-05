@@ -87,8 +87,6 @@ export default function DashboardPage({ params }) {
 
   const handleSaveLayout = async (newLayout) => {
     const token = localStorage.getItem('tb_token');
-    // userId is already available from params
-
     const updatedConfig = {
       ...config,
       layout: newLayout,
@@ -236,6 +234,43 @@ export default function DashboardPage({ params }) {
       toast.error('Error updating dashboard configuration.');
     } finally {
         setShowCreateModal(false);
+    }
+  };
+  const handleGeoFenceChange = async (newGeofence, widgetId) => {
+    const updatedWidgets = config.widgets.map(w => {
+        if (w.id === widgetId) {
+            return {
+                ...w,
+                geofence: newGeofence,
+            };
+        }
+        return w;
+    });
+
+    const updatedConfig = { ...config, widgets: updatedWidgets };
+    
+    const token = localStorage.getItem('tb_token');
+    try {
+      const res = await fetch('/api/thingsboard/saveDashboardConfig', {
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          userId,
+          config: updatedConfig,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Geofence saved successfully!");
+        setConfig(updatedConfig);
+      } else {
+        const errorData = await res.json();
+        console.error('Failed to save geofence:', errorData);
+        toast.error(`Failed to save geofence: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Geofence save error:', err);
+      toast.error('Error saving geofence.');
     }
   };
 
@@ -425,6 +460,7 @@ export default function DashboardPage({ params }) {
               saveLayout={saveLayout}
               token={token}
               onLatestTimestampChange={setLatestTelemetryTime}
+              onGeofenceChange={handleGeoFenceChange}
             />
             <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
               <button

@@ -38,13 +38,13 @@ const MapUpdater = dynamic(() => Promise.resolve(({ children, ...props }) => {
 
 const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
 
-export default function MapWidget({ title = "Device Locations", parameters = [], token, onGeofenceChange }) {
+export default function MapWidget({ title = "Device Locations", parameters = [], token,geoFence, onGeofenceChange }) {
   const [deviceLocations, setDeviceLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [mapBounds, setMapBounds] = useState(null);
   const [mapInitialized, setMapInitialized] = useState(false);
-  const [geofence, setGeofence] = useState(parameters[0]?.geofence || null);
+  const [geofence, setGeofence] = useState(geoFence || null);
 
   const leafletRef = useRef(null);
 

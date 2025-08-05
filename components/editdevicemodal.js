@@ -1,4 +1,3 @@
-// components/editdevicemodal.js
 import { useEffect, useState } from "react";
 
 export default function EditDeviceModal({ device, onSubmit, save, onClose }) {

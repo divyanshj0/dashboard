@@ -131,7 +131,7 @@ export default function Dashboard() {
     let currentWidgets = config?.widgets || [];
     let currentLayout = config?.layout || [];
 
-    const COLS = 12; 
+    const COLS = 3; 
 
     // Deep copy currentWidgets and currentLayout to modify them
     let widgetsToSave = currentWidgets.map(w => ({ ...w }));
@@ -258,16 +258,11 @@ export default function Dashboard() {
   };
 
   const handleGeoFenceChange = async (newGeofence, widgetId) => {
-    console.log(widgetId)
-    console.log(newGeofence)
     const updatedWidgets = config.widgets.map(w => {
         if (w.id === widgetId) {
             return {
                 ...w,
-                parameters: w.parameters.map(p => ({
-                    ...p,
-                    geofence: newGeofence,
-                }))
+                geofence: newGeofence,
             };
         }
         return w;
@@ -275,7 +270,6 @@ export default function Dashboard() {
 
     const updatedConfig = { ...config, widgets: updatedWidgets };
     
-    // Call the save API
     const token = localStorage.getItem('tb_token');
     const userId = localStorage.getItem('tb_userId');
     try {
@@ -289,8 +283,8 @@ export default function Dashboard() {
       });
 
       if (res.ok) {
-        setConfig(updatedConfig);
         toast.success("Geofence saved successfully!");
+        setConfig(updatedConfig);
       } else {
         const errorData = await res.json();
         console.error('Failed to save geofence:', errorData);

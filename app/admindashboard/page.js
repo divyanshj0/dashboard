@@ -65,8 +65,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     const t = localStorage.getItem('tb_token');
     const username= localStorage.getItem('userName');
-    setName(username);
     setToken(t);
+    setName(username);
+    if (!token) {
+      router.push('/');
+      return;
+    }
     fetchCustomers(t);
   }, []);
 

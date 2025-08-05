@@ -1,5 +1,3 @@
-// File: divyanshj0/dashboard/dashboard-dfbfd157f2a5332d4f49cf03728f87f60a7e34e8/components/WidgetRenderer.js
-
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import WaterProperty from './waterproperty';
 import Efficiency from './efficiencydonut';
@@ -51,7 +49,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                 case 'image':
                   return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
                 case 'map':
-                  return <MapWidget title={w.name} parameters={w.parameters} token={token} onGeofenceChange={onGeofenceChange} />;
+                  return <MapWidget title={w.name} parameters={w.parameters} token={token} geoFence={w.geofence} onGeofenceChange={(geofence)=>{onGeofenceChange(geofence,w.id)} }/>;
                 default:
                   return (
                     <div className="text-center">
