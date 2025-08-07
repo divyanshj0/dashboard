@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 const WaterProperty = ({ title = "", parameters = [], token, onLatestTimestampChange }) => {
+  const router = useRouter()
   const [fetchedValues, setFetchedValues] = useState({});
   const [loadingData, setLoadingData] = useState(true);
 
@@ -30,6 +32,12 @@ const WaterProperty = ({ title = "", parameters = [], token, onLatestTimestampCh
             }),
           });
 
+          if (res.status === 401) {
+            localStorage.clear();
+            toast.error('Session expired. Please log in again.');
+            router.push('/');
+            return;
+          }
           if (!res.ok) {
             console.error(`Failed to fetch data for key '${param.key}': ${res.statusText}`);
             newFetchedValues[param.key] = { value: null, unit: param.unit };

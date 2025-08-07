@@ -5,8 +5,9 @@ import { FiPlus, FiTrash2, FiX, FiUploadCloud } from 'react-icons/fi';
 import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
-
+import { useRouter } from 'next/router';
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
+  const router=useRouter()
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
@@ -17,7 +18,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [newImageFile, setNewImageFile] = useState(null);
   const [newImageTitle, setNewImageTitle] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const Tb_Url=process.env.NEXT_PUBLIC_TB_URL;
+  const Tb_Url = process.env.NEXT_PUBLIC_TB_URL;
 
   useEffect(() => {
     if (open) {
@@ -26,7 +27,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         parameters: w.parameters ? w.parameters.map(p => ({ ...p })) : []
       })));
     }
-    
+
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         onClose();
@@ -41,8 +42,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     const token = localStorage.getItem('tb_token');
 
     if (!token) {
-        toast.error('Authentication token missing. Please log in again.');
-        return;
+      toast.error('Authentication token missing. Please log in again.');
+      return;
     }
 
     Promise.all(
@@ -51,11 +52,17 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           headers: { 'X-Authorization': `Bearer ${token}` },
         })
           .then(res => {
-              if (!res.ok) {
-                  console.warn(`Failed to fetch keys for device ${dev.name} (${dev.id.id}): ${res.status} ${res.statusText}`);
-                  return [];
-              }
-              return res.json();
+            if (res.status === 401) {
+              localStorage.clear();
+              toast.error('Session expired. Please log in again.');
+              router.push('/');
+              return [];
+            }
+            if (!res.ok) {
+              console.warn(`Failed to fetch keys for device ${dev.name} (${dev.id.id}): ${res.status} ${res.statusText}`);
+              return [];
+            }
+            return res.json();
           })
           .then(keys => ({
             id: dev.id.id,
@@ -70,8 +77,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     )
       .then(setDevices)
       .catch(err => {
-          console.error("Overall error fetching devices keys:", err);
-          toast.error("Failed to load device telemetry keys.");
+        console.error("Overall error fetching devices keys:", err);
+        toast.error("Failed to load device telemetry keys.");
       });
   }, []);
 
@@ -85,15 +92,20 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, pageSize: 100, page: 0 }),
       });
-
+      if (res.status === 401) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return;
+      }
       if (!res.ok) {
         throw new Error('Failed to fetch available images.');
       }
       const images = await res.json();
       setAvailableImages(images.map(img => ({
-          id: img.id.id,
-          title: img.title,
-          publicLink: img.publicLink
+        id: img.id.id,
+        title: img.title,
+        publicLink: img.publicLink
       })));
     } catch (err) {
       console.error('Error fetching images:', err);
@@ -134,19 +146,19 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       return x;
     }));
   };
-  
+
   const updateImageParam = (widgetIdx, field, val) => {
     setWidgets(w => w.map((x, idx) => {
       if (idx !== widgetIdx) return x;
       const newParams = [{ ...(x.parameters?.[0] || {}) }];
-      
+
       if (field === 'imageId') {
-          const selectedImage = availableImages.find(img => img.id === val);
-          newParams[0].imageId = val;
-          newParams[0].publicLink = selectedImage ? selectedImage.publicLink : '';
-          newParams[0].title = selectedImage ? selectedImage.title : '';
+        const selectedImage = availableImages.find(img => img.id === val);
+        newParams[0].imageId = val;
+        newParams[0].publicLink = selectedImage ? selectedImage.publicLink : '';
+        newParams[0].title = selectedImage ? selectedImage.title : '';
       } else {
-          newParams[0][field] = val;
+        newParams[0][field] = val;
       }
       return { ...x, parameters: newParams };
     }));
@@ -177,14 +189,19 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         },
         body: formData,
       });
-
+      if (res.status === 401) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return;
+      }
       if (!res.ok) {
         throw new Error('Image upload failed.');
       }
 
       const uploadedImageInfo = await res.json();
       toast.success('Image uploaded successfully!');
-      
+
       setWidgets(prevWidgets => prevWidgets.map(w => {
         if (w.id === widgetId) {
           return {
@@ -221,11 +238,11 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
     if (widgetType === 'map') {
       newParam = { deviceId: '', name: '' };
-    } else if(widgetType === 'card') {
+    } else if (widgetType === 'card') {
       newParam = { deviceId: '', key: '', label: '', min: '', max: '', unit: '' };
     }
     else {
-      newParam = { deviceId: '', key: '', label: '', min: '', max: ''};
+      newParam = { deviceId: '', key: '', label: '', min: '', max: '' };
     }
 
     setWidgets(w => w.map((x, idx) => idx === widgetIdx
@@ -233,20 +250,20 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       : x
     ));
   };
-    
+
   const updateParam = (wIdx, pIdx, field, val) => {
     if (field === 'min' || field === 'max' || field === 'unit') {
       // Find the specific deviceId and key for the parameter being updated
       const currentParam = widgets[wIdx].parameters[pIdx];
       const { deviceId, key } = currentParam;
-      
+
       // Update all parameters that match the same deviceId and key
       setWidgets(w => w.map(widget => ({
         ...widget,
-        parameters: widget.parameters.map(param => 
+        parameters: widget.parameters.map(param =>
           (param.deviceId === deviceId && param.key === key)
-          ? { ...param, [field]: val }
-          : param
+            ? { ...param, [field]: val }
+            : param
         )
       })));
     } else {
@@ -257,30 +274,30 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       }));
     }
   };
-  
+
   const removeParam = (wIdx, pIdx) => setWidgets(w => w.map((x, idx) => {
-      if (idx !== wIdx) return x;
-      const params = x.parameters.filter((_, pi) => pi !== pIdx);
-      return { ...x, parameters: params };
-    })
+    if (idx !== wIdx) return x;
+    const params = x.parameters.filter((_, pi) => pi !== pIdx);
+    return { ...x, parameters: params };
+  })
   );
 
   const handleDeviceChange = (widgetIndex, paramIndex, deviceId) => {
-      const selectedDevice = devices.find(d => d.id === deviceId);
-      setWidgets(w => w.map((widget, wIdx) => {
-        if (wIdx !== widgetIndex) return widget;
-        const updatedParams = widget.parameters.map((param, pIdx) => {
-          if (pIdx === paramIndex) {
-            return {
-              ...param,
-              deviceId: deviceId,
-              name: selectedDevice ? selectedDevice.name : ''
-            };
-          }
-          return param;
-        });
-        return { ...widget, parameters: updatedParams };
-      }));
+    const selectedDevice = devices.find(d => d.id === deviceId);
+    setWidgets(w => w.map((widget, wIdx) => {
+      if (wIdx !== widgetIndex) return widget;
+      const updatedParams = widget.parameters.map((param, pIdx) => {
+        if (pIdx === paramIndex) {
+          return {
+            ...param,
+            deviceId: deviceId,
+            name: selectedDevice ? selectedDevice.name : ''
+          };
+        }
+        return param;
+      });
+      return { ...widget, parameters: updatedParams };
+    }));
   };
 
   const handleNext = () => onNext(widgets);
@@ -291,13 +308,13 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     if (w.type === 'image') {
       return w.parameters.length > 0 && w.parameters[0].imageId;
     } else if (w.type === 'map') {
-        return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
+      return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
     } else if (w.type === 'card') {
       return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
     }
     else {
       return w.parameters.length > 0 &&
-             w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
+        w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
     }
   });
 
@@ -369,71 +386,71 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <FiTrash2 size={24} />
                   </button>
                 </div>
-                
+
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   {w.type === 'image' ? (
                     <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-700 mb-2">Image Source</h4>
+                      <h4 className="font-semibold text-gray-700 mb-2">Image Source</h4>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Select Existing Image:</label>
+                        <select
+                          value={w.parameters[0]?.imageId || ''}
+                          onChange={e => updateImageParam(i, 'imageId', e.target.value)}
+                          className="w-full border rounded-lg p-2 focus:ring-blue-400"
+                        >
+                          <option value="">-- Select Image --</option>
+                          {availableImages.map(img => (
+                            <option key={img.id} value={img.id}>
+                              {img.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="border-t pt-4">
+                        <h4 className="font-semibold text-gray-700 mb-2">Or Upload New Image:</h4>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Select Existing Image:</label>
-                            <select
-                                value={w.parameters[0]?.imageId || ''} 
-                                onChange={e => updateImageParam(i, 'imageId', e.target.value)}
-                                className="w-full border rounded-lg p-2 focus:ring-blue-400"
-                            >
-                                <option value="">-- Select Image --</option>
-                                {availableImages.map(img => (
-                                    <option key={img.id} value={img.id}>
-                                        {img.title}
-                                    </option>
-                                ))}
-                            </select>
+                          <label htmlFor={`new-image-file-${w.id}`} className="block text-sm font-medium text-gray-700">Image File:</label>
+                          <input
+                            type="file"
+                            id={`new-image-file-${w.id}`}
+                            accept="image/*"
+                            onChange={e => setNewImageFile(e.target.files[0])}
+                            className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
                         </div>
-                        <div className="border-t pt-4">
-                            <h4 className="font-semibold text-gray-700 mb-2">Or Upload New Image:</h4>
-                            <div>
-                                <label htmlFor={`new-image-file-${w.id}`} className="block text-sm font-medium text-gray-700">Image File:</label>
-                                <input
-                                    type="file"
-                                    id={`new-image-file-${w.id}`}
-                                    accept="image/*"
-                                    onChange={e => setNewImageFile(e.target.files[0])}
-                                    className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                />
-                            </div>
-                            <div className="mt-2">
-                                <label htmlFor={`new-image-title-${w.id}`} className="block text-sm font-medium text-gray-700">Image Title:</label>
-                                <input
-                                    type="text"
-                                    id={`new-image-title-${w.id}`}
-                                    placeholder="Enter image title"
-                                    value={newImageTitle}
-                                    onChange={e => setNewImageTitle(e.target.value)}
-                                    className="w-full border rounded-lg p-2 focus:ring-blue-400"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleImageUpload(w.id)}
-                                disabled={uploadingImage || !newImageFile || !newImageTitle.trim()}
-                                className={clsx(
-                                    "mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-                                    (uploadingImage || !newImageFile || !newImageTitle.trim()) && "opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                {uploadingImage ? 'Uploading...' : <><FiUploadCloud className="mr-2" /> Upload Image</>}
-                            </button>
+                        <div className="mt-2">
+                          <label htmlFor={`new-image-title-${w.id}`} className="block text-sm font-medium text-gray-700">Image Title:</label>
+                          <input
+                            type="text"
+                            id={`new-image-title-${w.id}`}
+                            placeholder="Enter image title"
+                            value={newImageTitle}
+                            onChange={e => setNewImageTitle(e.target.value)}
+                            className="w-full border rounded-lg p-2 focus:ring-blue-400"
+                          />
                         </div>
-                        {w.parameters[0]?.imageId && (
-                            <p className="text-sm text-gray-600 mt-4">
-                                Currently selected: <span className="font-semibold">{availableImages.find(img => img.id === w.parameters[0]?.imageId)?.title ||w.parameters[0].title}</span>
-                            </p>
-                        )}
-                         {w.parameters[0]?.publicLink && (
-                            <p className="text-sm text-gray-600 mt-2 break-words">
-                                Link: <a href={`${Tb_Url}${w.parameters[0].publicLink}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Image Preview</a>
-                            </p>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleImageUpload(w.id)}
+                          disabled={uploadingImage || !newImageFile || !newImageTitle.trim()}
+                          className={clsx(
+                            "mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+                            (uploadingImage || !newImageFile || !newImageTitle.trim()) && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {uploadingImage ? 'Uploading...' : <><FiUploadCloud className="mr-2" /> Upload Image</>}
+                        </button>
+                      </div>
+                      {w.parameters[0]?.imageId && (
+                        <p className="text-sm text-gray-600 mt-4">
+                          Currently selected: <span className="font-semibold">{availableImages.find(img => img.id === w.parameters[0]?.imageId)?.title || w.parameters[0].title}</span>
+                        </p>
+                      )}
+                      {w.parameters[0]?.publicLink && (
+                        <p className="text-sm text-gray-600 mt-2 break-words">
+                          Link: <a href={`${Tb_Url}${w.parameters[0].publicLink}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Image Preview</a>
+                        </p>
+                      )}
                     </div>
                   ) : w.type === 'map' ? (
                     <div>
@@ -454,21 +471,21 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         {w.parameters.map((p, pi) => (
                           <div
                             key={pi}
-                            className={clsx("grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-white rounded-lg px-3 py-2 shadow-sm border", 
+                            className={clsx("grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-white rounded-lg px-3 py-2 shadow-sm border",
                               !p.deviceId && "border-red-300 ring-2 ring-red-100"
                             )}
                           >
-                            <select 
-                                value={p.deviceId} 
-                                onChange={e => handleDeviceChange(i, pi, e.target.value)} 
-                                className="border rounded-lg p-2 focus:ring-blue-400"
+                            <select
+                              value={p.deviceId}
+                              onChange={e => handleDeviceChange(i, pi, e.target.value)}
+                              className="border rounded-lg p-2 focus:ring-blue-400"
                             >
                               <option value="">Select Device</option>
                               {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                             </select>
                             <button
                               type="button"
-                              onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true);}}
+                              onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
                               className="text-red-500 hover:text-red-700 outline-none ml-auto"
                               title="Remove Device"
                             >
@@ -497,60 +514,60 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         {w.parameters.map((p, pi) => (
                           <div
                             key={pi}
-                            className={clsx("flex gap-10 items-center bg-white rounded-lg px-3 py-2 shadow-sm border", 
+                            className={clsx("flex gap-10 items-center bg-white rounded-lg px-3 py-2 shadow-sm border",
                               (!p.deviceId || !p.key || !p.label.trim()) && "border-red-300 ring-2 ring-red-100"
                             )}
                           >
                             <div className="grid md:grid-cols-3 grid-cols-1 gap-2">
-                                <select value={p.deviceId} onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400">
-                                  <option value="">Device</option>
-                                  {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                <select value={p.key} onChange={e => updateParam(i, pi, 'key', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400" disabled={!p.deviceId} >
-                                  <option value="">Key</option>
-                                  {devices.find(d => d.id === p.deviceId)?.keys.map(k =>
-                                    <option key={k} value={k}>{k}</option>
-                                  ) || []}
-                                </select>
+                              <select value={p.deviceId} onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400">
+                                <option value="">Device</option>
+                                {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                              <select value={p.key} onChange={e => updateParam(i, pi, 'key', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400" disabled={!p.deviceId} >
+                                <option value="">Key</option>
+                                {devices.find(d => d.id === p.deviceId)?.keys.map(k =>
+                                  <option key={k} value={k}>{k}</option>
+                                ) || []}
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Label"
+                                value={p.label}
+                                onChange={e => updateParam(i, pi, 'label', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400" />
+                              {(w.type === 'card') && (
                                 <input
                                   type="text"
-                                  placeholder="Label"
-                                  value={p.label}
-                                  onChange={e => updateParam(i, pi, 'label', e.target.value)}
-                                  className="border rounded-lg p-2 focus:ring-blue-400"/>
-                                {(w.type === 'card') && (
-                                  <input
-                                    type="text"
-                                    placeholder="Unit"
-                                    value={p.unit || ''}
-                                    onChange={e => updateParam(i, pi, 'unit', e.target.value)}
-                                    className="border rounded-lg p-2 focus:ring-blue-400"
-                                  />
-                                )}
-                                <input
-                                  type="number"
-                                  placeholder="Min Value"
-                                  value={p.min || ''}
-                                  onChange={e => updateParam(i, pi, 'min', e.target.value)}
+                                  placeholder="Unit"
+                                  value={p.unit || ''}
+                                  onChange={e => updateParam(i, pi, 'unit', e.target.value)}
                                   className="border rounded-lg p-2 focus:ring-blue-400"
                                 />
-                                 <input
-                                  type="number"
-                                  placeholder="Max Value"
-                                  value={p.max || ''}
-                                  onChange={e => updateParam(i, pi, 'max', e.target.value)}
-                                  className="border rounded-lg p-2 focus:ring-blue-400"
-                                />
+                              )}
+                              <input
+                                type="number"
+                                placeholder="Min Value"
+                                value={p.min || ''}
+                                onChange={e => updateParam(i, pi, 'min', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                              />
+                              <input
+                                type="number"
+                                placeholder="Max Value"
+                                value={p.max || ''}
+                                onChange={e => updateParam(i, pi, 'max', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                              />
                             </div>
                             <div className="flex justify-center items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true);}}
-                                  className="text-red-500 hover:text-red-700 outline-none"
-                                  title="Remove Parameter"
-                                >
-                                  <FiTrash2 size={28} />
-                                </button>
+                              <button
+                                type="button"
+                                onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
+                                className="text-red-500 hover:text-red-700 outline-none"
+                                title="Remove Parameter"
+                              >
+                                <FiTrash2 size={28} />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -570,12 +587,12 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           </div>
         </div>
         {isDeletePopupOpen && (
-        <DeletePopup
-          onConfirm={() => {removeWidget(widgetToDelete); setIsDeletePopupOpen(false); setWidgetToDelete(null);}}
-          onCancel={() => { setIsDeletePopupOpen(false); setWidgetToDelete(null); }}
-        />
+          <DeletePopup
+            onConfirm={() => { removeWidget(widgetToDelete); setIsDeletePopupOpen(false); setWidgetToDelete(null); }}
+            onCancel={() => { setIsDeletePopupOpen(false); setWidgetToDelete(null); }}
+          />
         )}
-        {isParamDelete &&(
+        {isParamDelete && (
           <DeletePopup
             onConfirm={() => { removeParam(widgetToDelete, paramToDelete); setIsParamDelete(false); setWidgetToDelete(null); setParamToDelete(null); }}
             onCancel={() => { setIsParamDelete(false); setWidgetToDelete(null); setParamToDelete(null); }}

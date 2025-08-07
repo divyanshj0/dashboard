@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { toast } from 'react-toastify'; 
-
+import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
 export default function DataUpdate({ onClose }) {
+    const router=useRouter()
     const [token, setToken] = useState('');
     const [devices, setDevices] = useState([]);
     // State to manage multiple telemetry entries
@@ -39,6 +40,14 @@ export default function DataUpdate({ onClose }) {
             const res = await fetch(`${process.env.NEXT_PUBLIC_TB_URL}/api/plugins/telemetry/DEVICE/${deviceId}/keys/timeseries`, {
                 headers: { 'X-Authorization': `Bearer ${token}` }
             });
+            if (res.status === 401) {
+                // Token is unauthorized or expired.
+                // Clear localStorage and redirect to login.
+                localStorage.clear();
+                toast.error('Session expired. Please log in again.');
+                router.push('/');
+                return; // Stop further execution
+            }
             const keys = await res.json();
             updateEntry(entryId, 'telemetryKeys', keys || []);
         } catch (err) {
@@ -81,7 +90,7 @@ export default function DataUpdate({ onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const telemetryByDevice = new Map(); 
+        const telemetryByDevice = new Map();
 
         let validationError = false;
         for (const entry of telemetryEntries) {
@@ -116,6 +125,12 @@ export default function DataUpdate({ onClose }) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token, deviceId, telemetryData })
                 });
+                if (response.status === 401) {
+                    localStorage.clear();
+                    toast.error('Session expired. Please log in again.');
+                    router.push('/');
+                    return;
+                }
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -136,9 +151,9 @@ export default function DataUpdate({ onClose }) {
         if (failCount > 0) {
             toast.error(`Failed to send telemetry for ${failCount} device(s): ${failedDevices.join(', ')}.`)
         }
-        
+
         if (successCount > 0 || failCount === 0) {
-             setTelemetryEntries([{ id: Date.now(), deviceId: '', selectedKey: '', customKey: '', value: '' }]);
+            setTelemetryEntries([{ id: Date.now(), deviceId: '', selectedKey: '', customKey: '', value: '' }]);
         }
     };
 

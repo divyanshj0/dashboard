@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 import { FiMaximize, FiX } from 'react-icons/fi';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
-
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
@@ -38,7 +39,8 @@ const MapUpdater = dynamic(() => Promise.resolve(({ children, ...props }) => {
 
 const markerColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#34D399'];
 
-export default function MapWidget({ title = "Device Locations", parameters = [], token,geoFence, onGeofenceChange }) {
+export default function MapWidget({ title = "Device Locations", parameters = [], token, geoFence, onGeofenceChange }) {
+  const router=useRouter()
   const [deviceLocations, setDeviceLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -93,6 +95,12 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, deviceId: param.deviceId, key: 'latitude', limit: 1 }),
           });
+          if (latRes.status === 401) {
+            localStorage.clear();
+            toast.error('Session expired. Please log in again.');
+            router.push('/');
+            return;
+          }
           const latData = await latRes.json();
           const latitude = latData?.latitude?.[0]?.value ? parseFloat(latData.latitude[0].value) : null;
           const lonRes = await fetch('/api/thingsboard/timeseriesdata', {
@@ -100,6 +108,12 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, deviceId: param.deviceId, key: 'longitude', limit: 1 }),
           });
+          if (lonRes.status === 401) {
+            localStorage.clear();
+            toast.error('Session expired. Please log in again.');
+            router.push('/');
+            return;
+          }
           const lonData = await lonRes.json();
           const longitude = lonData?.longitude?.[0]?.value ? parseFloat(lonData.longitude[0].value) : null;
           const deviceName = param.name || 'Unknown Device';
@@ -195,10 +209,10 @@ export default function MapWidget({ title = "Device Locations", parameters = [],
           </Marker>
         ))}
         {geofence && geofence.length > 0 && (
-          <Polygon positions={geofence} pathOptions={{ color: 'blue', weight: 3, fillOpacity:0.1 }} />
+          <Polygon positions={geofence} pathOptions={{ color: 'blue', weight: 3, fillOpacity: 0.1 }} />
         )}
         {mapBounds && deviceLocations.length > 0 && <MapUpdater bounds={mapBounds} mapInitialized={mapInitialized} L={L} />}
-        <MapDrawControl onCreated={handleCreated} onEdited={handleEdited} onDeleted={handleDeleted} existingGeofence={geofence} L={L}/>
+        <MapDrawControl onCreated={handleCreated} onEdited={handleEdited} onDeleted={handleDeleted} existingGeofence={geofence} L={L} />
       </MapContainer>
     );
   };

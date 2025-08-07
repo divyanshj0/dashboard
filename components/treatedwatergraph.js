@@ -4,7 +4,8 @@ import { FiMaximize } from 'react-icons/fi';
 import { FaFileDownload } from "react-icons/fa";
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6366F1"];
 
 function transformSeries(series) {
@@ -84,7 +85,8 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function TreatedWaterChart({ title = "", parameters = [], token,unit, saveLayout,onLatestTimestampChange }) {
+export default function TreatedWaterChart({ title = "", parameters = [], token, unit, saveLayout, onLatestTimestampChange }) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -92,7 +94,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
-  const[showCustomField,setShowCustomField]=useState(false)
+  const [showCustomField, setShowCustomField] = useState(false)
   const fetchTimeSeriesData = async () => {
     setLoading(true);
     const result = {};
@@ -118,7 +120,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
 
       for (const param of parameters) {
         const compositeKey = `${param.deviceId}_${param.key}`;
-        
+
         const res = await fetch('/api/thingsboard/timeseriesdata', {
           method: 'POST',
           headers: {
@@ -134,22 +136,28 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
           }),
         });
 
+        if (res.status === 401) {
+          localStorage.clear();
+          toast.error('Session expired. Please log in again.');
+          router.push('/');
+          return;
+        }
         const data = await res.json();
         const dataForParam = Array.isArray(data[param.key])
           ? data[param.key].map((item) => {
-              const ts = Number(item.ts);
-              if (ts > latestTimestamp) {
-                latestTimestamp = ts; // Update latest timestamp
-              }
-              return {
-                ts: ts,
-                value: parseFloat(item.value),
-              };
-            })
+            const ts = Number(item.ts);
+            if (ts > latestTimestamp) {
+              latestTimestamp = ts; // Update latest timestamp
+            }
+            return {
+              ts: ts,
+              value: parseFloat(item.value),
+            };
+          })
           : [];
         result[compositeKey] = dataForParam;
       }
-      
+
       setTimeSeries(result);
       if (latestTimestamp > 0) {
         onLatestTimestampChange(latestTimestamp); // Call the prop with the latest timestamp
@@ -204,7 +212,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
-  
+
   const Chart = ({ data, fullView }) => (
     <ResponsiveContainer width="95%" height={fullView ? "90%" : "80%"}>
       <LineChart data={data}>
@@ -212,12 +220,12 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
           dataKey="ts"
           tickFormatter={(ts) => {
             const date = new Date(ts);
-            return date.toLocaleString('en-GB',{
-              day:'2-digit',
-              month:'2-digit',
-              hour:'2-digit',
-              minute:'2-digit',
-              hour12:false,
+            return date.toLocaleString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
             });
           }}
         />
@@ -238,19 +246,19 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
           }
           cursor={false}
         />
-        <Legend/>
+        <Legend />
         {series.map((s, idx) => (
-            <Line
-              type="monotone"
-              key={s.label}
-              dataKey={s.label}
-              stroke={COLORS[idx % COLORS.length]}
-              strokeWidth={3}
-              dot={fullView?{ r: 4 }:{r:0}}
-              connectNulls={true}
-              isAnimationActive={false}
-            />
-          )
+          <Line
+            type="monotone"
+            key={s.label}
+            dataKey={s.label}
+            stroke={COLORS[idx % COLORS.length]}
+            strokeWidth={3}
+            dot={fullView ? { r: 4 } : { r: 0 }}
+            connectNulls={true}
+            isAnimationActive={false}
+          />
+        )
         )}
       </LineChart>
     </ResponsiveContainer>
@@ -266,7 +274,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
               onClick={() => handleViewChange('hourly')}
               aria-label="Daily view"
               className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'hourly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                } ${showCustomField?'hidden':''}`}
+                } ${showCustomField ? 'hidden' : ''}`}
             >
               D
             </button>
@@ -274,7 +282,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
               onClick={() => handleViewChange('weekly')}
               aria-label="Weekly view"
               className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'weekly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                } ${showCustomField?'hidden':''}`}
+                } ${showCustomField ? 'hidden' : ''}`}
             >
               W
             </button>
@@ -307,7 +315,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
                   max={new Date().toISOString().split('T')[0]}
                 />
                 <button
-                  onClick={()=>{setShowCustomField(false)}}
+                  onClick={() => { setShowCustomField(false) }}
                   className="bg-blue-500 text-white px-2 py-1 rounded text-sm"
                   aria-label="Apply custom date range"
                 >
@@ -316,9 +324,9 @@ export default function TreatedWaterChart({ title = "", parameters = [], token,u
               </div>
             )}
           </div>
-          
+
           <button onClick={() => downloadCSV(chartData, title, view)} title="Download DataFile" className='cursor-pointer' >
-            <FaFileDownload size={20}/>
+            <FaFileDownload size={20} />
           </button>
           <button onClick={() => setIsOpen(true)} title="fullscreen" className='cursor-pointer'>
             <FiMaximize size={20} />

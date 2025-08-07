@@ -4,7 +4,6 @@ import { FaUserSlash ,FaUser} from "react-icons/fa";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
-
 export default function UserListModal({ users, loading, onClose, onRefresh, onDelete,onCreateDashboard }) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +50,14 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
         body: JSON.stringify({ token, userId, enabled: !currentStatus }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || `Failed to ${!currentStatus ? 'activate' : 'deactivate'} user.`);

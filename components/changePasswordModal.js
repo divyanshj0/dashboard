@@ -1,5 +1,5 @@
 'use client';
-import { useState ,useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 
@@ -15,10 +15,10 @@ export default function ChangePasswordModal({ onClose }) {
         e.preventDefault();
         const token = localStorage.getItem('tb_token');
 
-        if (!token){
+        if (!token) {
             localStorage.clear();
             router.push('/');
-        } 
+        }
         if (newPassword !== confirmPassword) return toast.error('confrim Password do not match!');
         if (!currentPassword || !newPassword) return toast.error('All fields are required');
         if (currentPassword === newPassword && currentPassword) return toast.error('New password can not be same as old');
@@ -36,6 +36,14 @@ export default function ChangePasswordModal({ onClose }) {
                 }),
             });
 
+            if (response.status === 401) {
+                // Token is unauthorized or expired.
+                // Clear localStorage and redirect to login.
+                localStorage.clear();
+                toast.error('Session expired. Please log in again.');
+                router.push('/');
+                return; // Stop further execution
+            }
             const data = await response.json();
 
             if (!response.ok) throw new Error(data.error || 'Failed to update password');
@@ -46,20 +54,20 @@ export default function ChangePasswordModal({ onClose }) {
             onClose();
         } catch (err) {
             console.error(err);
-            toast.error( err.message);
+            toast.error(err.message);
         } finally {
             setLoading(false);
         }
     };
     useEffect(() => {
         function handleKeyDown(event) {
-          if (event.key === "Escape") {
-            onClose();
-          }
+            if (event.key === "Escape") {
+                onClose();
+            }
         }
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose]);
+    }, [onClose]);
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center px-2">

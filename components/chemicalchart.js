@@ -4,7 +4,8 @@ import { FiMaximize } from 'react-icons/fi';
 import { FaFileDownload } from "react-icons/fa";
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 const COLORS = ["#2bc864", "#3f92de", "#d4a822", "#ce604f", "#966edf", "#cd6493", "#5f7cda"];
 
 function transformSeries(series) {
@@ -64,6 +65,7 @@ function downloadCSV(data, title, view) {
 }
 
 export default function ChemicalChart({ title = "", parameters = [], token, saveLayout,unit, onLatestTimestampChange }) {
+  const router=useRouter()
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -112,6 +114,14 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
             endTs: endTs,
           }),
         });
+        if (res.status === 401) {
+                // Token is unauthorized or expired.
+                // Clear localStorage and redirect to login.
+                localStorage.clear();
+                toast.error('Session expired. Please log in again.');
+                router.push('/');
+                return; // Stop further execution
+              }
         const data = await res.json();
         const dataForParam = Array.isArray(data[param.key])
           ? data[param.key].map((item) => {

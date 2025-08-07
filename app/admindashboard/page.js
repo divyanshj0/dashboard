@@ -8,8 +8,8 @@ import AddDeviceModal from '@/components/AddDeviceModal';
 import DeletePopup from '@/components/deletepopup';
 import ChangePasswordModal from '@/components/changePasswordModal';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState,useRef } from 'react';
-import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus ,FiLogOut} from 'react-icons/fi';
+import { useEffect, useState, useRef } from 'react';
+import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus, FiLogOut } from 'react-icons/fi';
 import { TbDeviceDesktopPlus } from "react-icons/tb";
 import { FaKey } from 'react-icons/fa6';
 import EditDeviceModal from '@/components/editdevicemodal';
@@ -24,10 +24,10 @@ export default function AdminDashboard() {
   const [customerDevices, setCustomerDevices] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [device, setDevice] = useState({}); // This will store the full device object for editing
-  const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '',password:'',confirmPassword:'' });
+  const [newUser, setNewUser] = useState({ email: '', firstName: '', lastName: '', password: '', confirmPassword: '' });
   const [newDevice, setNewDevice] = useState({ name: '', label: '', clientId: '', username: '', password: '' });
   const [loading, setLoading] = useState(true);
-  const [save,setSave]= useState(false);
+  const [save, setSave] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -36,11 +36,11 @@ export default function AdminDashboard() {
   const [showAddDeviceModal, setShowAddDeviceModal] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false)
-  const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: ''});
+  const [addCustomerForm, setAddCustomerForm] = useState({ name: '', city: '', state: '', country: '' });
   const [isDeleteCustomer, setIsDeleteCustomer] = useState(false);
   const [isDeleteUser, setIsDeleteUser] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
-  const [isDeleteDevice, setIsDeleteDevice] = useState(false); 
+  const [isDeleteDevice, setIsDeleteDevice] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef(null);
@@ -61,10 +61,10 @@ export default function AdminDashboard() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMenu]);
-  
+
   useEffect(() => {
     const t = localStorage.getItem('tb_token');
-    const username= localStorage.getItem('userName');
+    const username = localStorage.getItem('userName');
     setToken(t);
     setName(username);
     if (!t) {
@@ -79,22 +79,38 @@ export default function AdminDashboard() {
       method: 'POST',
       body: JSON.stringify({ token: t }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     const data = await res.json();
     setCustomers(data);
     setLoading(false);
   };
 
   const handleDeleteCustomer = async (customerId) => {
-    await fetch('/api/thingsboard/deleteCustomer', {
+    const res = await fetch('/api/thingsboard/deleteCustomer', {
       method: 'POST',
       body: JSON.stringify({ token, customerId }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     fetchCustomers(token);
     setIsDeleteCustomer(false);
   };
 
   const handleAddCustomerForm = async () => {
-    await fetch('/api/thingsboard/createCustomer', {
+    const res = await fetch('/api/thingsboard/createCustomer', {
       method: 'POST',
       body: JSON.stringify({
         token,
@@ -104,42 +120,58 @@ export default function AdminDashboard() {
         country: addCustomerForm.country
       })
     });
-    setAddCustomerForm({ name: '', city: '', state: '', country: ''});
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
+    setAddCustomerForm({ name: '', city: '', state: '', country: '' });
     fetchCustomers(token);
     setSave(false);
     toast.success('Customer added successfully');
     setShowAddModal(false);
   };
   const handleAddUser = async () => {
-  const res = await fetch('/api/thingsboard/addUser', {
-    method: 'POST',
-    body: JSON.stringify({
-      token,
-      customerId: selectedCustomerId,
-      email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      password: newUser.password,
-    }),
-  });
+    const res = await fetch('/api/thingsboard/addUser', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+        customerId: selectedCustomerId,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        password: newUser.password,
+      }),
+    });
 
-  const data = await res.json();  // parse JSON body
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
+    const data = await res.json();  // parse JSON body
 
-  if (!res.ok) {
-    toast.error(data.error || 'Something went wrong');
+    if (!res.ok) {
+      toast.error(data.error || 'Something went wrong');
+      setSave(false);
+      return;
+    }
+
+    setNewUser({ email: '', firstName: '', lastName: '', password: '', confirmPassword: '' });
     setSave(false);
-    return;
-  }
-
-  setNewUser({ email: '', firstName: '', lastName: '', password: '', confirmPassword: '' });
-  setSave(false);
-  toast.success('User added successfully');
-  setShowAddUserModal(false);
-};
+    toast.success('User added successfully');
+    setShowAddUserModal(false);
+  };
 
 
   const handleAddDevice = async () => {
-    await fetch('/api/thingsboard/createdevice', {
+    const res = await fetch('/api/thingsboard/createdevice', {
       method: 'POST',
       body: JSON.stringify({
         token,
@@ -151,6 +183,14 @@ export default function AdminDashboard() {
         password: newDevice.password
       }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     setNewDevice({ name: '', label: '', clientId: '', username: '', password: '' });
     setSave(false);
     toast.success('Device added successfully');
@@ -165,7 +205,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token,
-          customerId:selectedCustomerId,
+          customerId: selectedCustomerId,
           deviceId: device.id.id,
           name: updatedFields.name,
           label: updatedFields.label,
@@ -175,6 +215,14 @@ export default function AdminDashboard() {
         }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Failed to update device');
@@ -196,6 +244,14 @@ export default function AdminDashboard() {
       method: 'POST',
       body: JSON.stringify({ token, customerId }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     const data = await res.json();
     setCustomerUsers(data);
     setLoadingModal(false);
@@ -206,39 +262,71 @@ export default function AdminDashboard() {
       method: 'POST',
       body: JSON.stringify({ token, customerId }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     const data = await res.json();
     setCustomerDevices(data.devices || []);
     setLoadingModal(false);
   };
-  const fetchDev=async(token,customerId)=>{
+  const fetchDev = async (token, customerId) => {
     const res = await fetch('/api/thingsboard/devices', {
-          method: 'POST',
-          body: JSON.stringify({ customerId: customerId, token: token }),
-        })
-        const devdata = await res.json()
-        if (!res.ok) throw new Error(devdata.error)
-        localStorage.setItem('tb_devices', JSON.stringify(devdata.devices));
+      method: 'POST',
+      body: JSON.stringify({ customerId: customerId, token: token }),
+    })
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
+    const devdata = await res.json()
+    if (!res.ok) throw new Error(devdata.error)
+    localStorage.setItem('tb_devices', JSON.stringify(devdata.devices));
 
   }
 
   const handleDeleteUser = async (userId) => {
     setDeleting(true);
-    await fetch('/api/thingsboard/deleteUser', {
+    const res = await fetch('/api/thingsboard/deleteUser', {
       method: 'POST',
       body: JSON.stringify({ token, userId }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     fetchUser(token, selectedCustomerId);
     setDeleting(false);
     setIsDeleteUser(false);
     toast.success('User Deleted Successfully');
   };
-  
+
   const handleDeleteDevice = async (deviceId) => {
     setDeleting(true);
-    await fetch('/api/thingsboard/deleteDevice', {
+    const res = await fetch('/api/thingsboard/deleteDevice', {
       method: 'POST',
       body: JSON.stringify({ token, deviceId }),
     });
+    if (res.status === 401) {
+      // Token is unauthorized or expired.
+      // Clear localStorage and redirect to login.
+      localStorage.clear();
+      toast.error('Session expired. Please log in again.');
+      router.push('/');
+      return; // Stop further execution
+    }
     fetchDevices(token, selectedCustomerId);
     setDeleting(false);
     setIsDeleteDevice(false);
@@ -275,7 +363,7 @@ export default function AdminDashboard() {
                   <div className="py-1">
                     <button
                       className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-max"
-                      onClick={() => {setShowChangePassword(true); setShowMenu(false);}}
+                      onClick={() => { setShowChangePassword(true); setShowMenu(false); }}
                     >
                       <FaKey size={20} className="mr-2" /> Change Password
                     </button>
@@ -301,15 +389,15 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xl font-semibold text-gray-700">{customer.title}</h2>
-                  
+
                 </div>
                 <div className="text-sm text-gray-600 space-y-1">
                   <p><strong>Country:</strong> {customer.country || 'Not set'}</p>
                   <p><strong>City:</strong> {customer.city || 'Not set'}</p>
-                  <p><strong>Created On: </strong> 
-                  <span className="ml-2">
-                    {new Date(customer.createdTime).toLocaleDateString('en-GB')}
-                  </span>
+                  <p><strong>Created On: </strong>
+                    <span className="ml-2">
+                      {new Date(customer.createdTime).toLocaleDateString('en-GB')}
+                    </span>
                   </p>
                 </div>
 

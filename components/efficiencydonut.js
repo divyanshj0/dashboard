@@ -1,10 +1,12 @@
 'use client';
 import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts';
 import { useState, useEffect } from 'react';
-
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B']; // Blue, Green, Amber
 
 const Efficiency = ({ parameters = [], token, label = "" ,onLatestTimestampChange}) => {
+  const router=useRouter()
   const [latestValue, setLatestValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +35,12 @@ const Efficiency = ({ parameters = [], token, label = "" ,onLatestTimestampChang
           }),
         });
 
+        if (res.status === 401) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return;
+      }
         if (!res.ok) {
           throw new Error(`API request failed: ${res.status}`);
         }

@@ -67,6 +67,14 @@ export default function DashboardPage({ params }) {
           body: JSON.stringify({ token, devices, userId }),
         });
 
+        if (res.status === 401) {
+          // Token is unauthorized or expired.
+          // Clear localStorage and redirect to login.
+          localStorage.clear();
+          toast.error('Session expired. Please log in again.');
+          router.push('/');
+          return; // Stop further execution
+        }
         const result = await res.json();
         setConfig(result.config || null);
         setLayout(result.layout || []);
@@ -82,7 +90,7 @@ export default function DashboardPage({ params }) {
 
   const handleLogout = () => {
     router.push('/admindashboard');
-    
+
   };
 
   const handleSaveLayout = async (newLayout) => {
@@ -102,6 +110,14 @@ export default function DashboardPage({ params }) {
         }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       if (res.ok) {
         setConfig(updatedConfig);
         setLayout(newLayout);
@@ -123,7 +139,7 @@ export default function DashboardPage({ params }) {
     let currentWidgets = config?.widgets || [];
     let currentLayout = config?.layout || [];
 
-    const COLS = 12; 
+    const COLS = 12;
 
     let widgetsToSave = currentWidgets.map(w => ({ ...w }));
     let layoutToSave = currentLayout.map(l => ({ ...l }));
@@ -131,8 +147,8 @@ export default function DashboardPage({ params }) {
     let maxExistingY = 0;
     let maxExistingBottom = 0;
     if (currentLayout.length > 0) {
-        maxExistingY = Math.max(...currentLayout.map(item => item.y));
-        maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
+      maxExistingY = Math.max(...currentLayout.map(item => item.y));
+      maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
     }
 
     // Determine initial placement for new widgets
@@ -141,64 +157,64 @@ export default function DashboardPage({ params }) {
 
     // If there are existing widgets, try to place in the last row
     if (currentLayout.length > 0) {
-        // Find widgets in the row with the highest Y coordinate (the "last" row)
-        const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
-        
-        if (widgetsInLastVisualRow.length > 0) {
-            // Find the rightmost occupied position in that row
-            const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
-            
-            // If there's space after the rightmost widget in the last row
-            if (rightmostXInLastRow < COLS) {
-                currentPlacementX = rightmostXInLastRow;
-                currentPlacementY = maxExistingY; // Place it in the same row
-            }
+      // Find widgets in the row with the highest Y coordinate (the "last" row)
+      const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
+
+      if (widgetsInLastVisualRow.length > 0) {
+        // Find the rightmost occupied position in that row
+        const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
+
+        // If there's space after the rightmost widget in the last row
+        if (rightmostXInLastRow < COLS) {
+          currentPlacementX = rightmostXInLastRow;
+          currentPlacementY = maxExistingY; // Place it in the same row
         }
+      }
     }
 
     // Process widgets coming from the modal
     widgetsFromModal.forEach(widgetFromModal => {
-        const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
+      const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
 
-        if (existingWidget) {
-            Object.assign(existingWidget, widgetFromModal);
-            if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
-                 layoutToSave.push({
-                    i: widgetFromModal.id,
-                    x: currentPlacementX,
-                    y: currentPlacementY,
-                    w: widgetFromModal.layout?.w || 3,
-                    h: widgetFromModal.layout?.h || 2,
-                });
-                currentPlacementX += (widgetFromModal.layout?.w || 3);
-                if (currentPlacementX >= COLS) {
-                    currentPlacementX = 0;
-                    currentPlacementY += (widgetFromModal.layout?.h || 2);
-                }
-            }
-        } else {
-            const defaultW = widgetFromModal.layout?.w || 3;
-            const defaultH = widgetFromModal.layout?.h || 2;
-
-            if (currentPlacementX + defaultW > COLS) {
-                currentPlacementX = 0;
-                currentPlacementY = maxExistingBottom;
-                maxExistingBottom += defaultH; 
-            }
-
-            const newLayoutItem = {
-                i: widgetFromModal.id,
-                x: currentPlacementX,
-                y: currentPlacementY,
-                w: defaultW,
-                h: defaultH,
-            };
-            
-            widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
-            layoutToSave.push(newLayoutItem);
-
-            currentPlacementX += defaultW;
+      if (existingWidget) {
+        Object.assign(existingWidget, widgetFromModal);
+        if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
+          layoutToSave.push({
+            i: widgetFromModal.id,
+            x: currentPlacementX,
+            y: currentPlacementY,
+            w: widgetFromModal.layout?.w || 3,
+            h: widgetFromModal.layout?.h || 2,
+          });
+          currentPlacementX += (widgetFromModal.layout?.w || 3);
+          if (currentPlacementX >= COLS) {
+            currentPlacementX = 0;
+            currentPlacementY += (widgetFromModal.layout?.h || 2);
+          }
         }
+      } else {
+        const defaultW = widgetFromModal.layout?.w || 3;
+        const defaultH = widgetFromModal.layout?.h || 2;
+
+        if (currentPlacementX + defaultW > COLS) {
+          currentPlacementX = 0;
+          currentPlacementY = maxExistingBottom;
+          maxExistingBottom += defaultH;
+        }
+
+        const newLayoutItem = {
+          i: widgetFromModal.id,
+          x: currentPlacementX,
+          y: currentPlacementY,
+          w: defaultW,
+          h: defaultH,
+        };
+
+        widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
+        layoutToSave.push(newLayoutItem);
+
+        currentPlacementX += defaultW;
+      }
     });
 
     const finalWidgetsToSave = widgetsToSave.filter(w => widgetsFromModal.some(mw => mw.id === w.id));
@@ -220,6 +236,14 @@ export default function DashboardPage({ params }) {
         }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       if (res.ok) {
         setConfig(updatedConfig);
         setLayout(updatedConfig.layout);
@@ -233,22 +257,22 @@ export default function DashboardPage({ params }) {
       console.error('Config save error:', err);
       toast.error('Error updating dashboard configuration.');
     } finally {
-        setShowCreateModal(false);
+      setShowCreateModal(false);
     }
   };
   const handleGeoFenceChange = async (newGeofence, widgetId) => {
     const updatedWidgets = config.widgets.map(w => {
-        if (w.id === widgetId) {
-            return {
-                ...w,
-                geofence: newGeofence,
-            };
-        }
-        return w;
+      if (w.id === widgetId) {
+        return {
+          ...w,
+          geofence: newGeofence,
+        };
+      }
+      return w;
     });
 
     const updatedConfig = { ...config, widgets: updatedWidgets };
-    
+
     const token = localStorage.getItem('tb_token');
     try {
       const res = await fetch('/api/thingsboard/saveDashboardConfig', {
@@ -260,6 +284,14 @@ export default function DashboardPage({ params }) {
         }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       if (res.ok) {
         toast.success("Geofence saved successfully!");
         setConfig(updatedConfig);
@@ -354,7 +386,8 @@ export default function DashboardPage({ params }) {
 
                     <button
                       className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-max"
-                      onClick={() => {setShowUpdateData(true); setShowMenu((prev) => !prev);
+                      onClick={() => {
+                        setShowUpdateData(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <BsDatabaseUp size={20} className="mr-2" />Data Update
@@ -412,7 +445,7 @@ export default function DashboardPage({ params }) {
                 >
                   <FiEdit2 size={20} className="mr-2" /> Customize
                 </button>
-                <button 
+                <button
                   className={clsx(
                     "flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full",
                     { "opacity-50 cursor-not-allowed": !config || config.widgets.length === 0 }
@@ -433,7 +466,7 @@ export default function DashboardPage({ params }) {
                   <FiLogOut size={20} className="mr-2" /> Logout
                 </button>
               </div>
-              <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
+              <div className={`${!config || config.widgets.length === 0 ? 'hidden' : ''}`}>
                 <p className="font-medium">Last Updated</p>
                 <span>{formatTimestamp(latestTelemetryTime)}</span>
               </div>
@@ -512,7 +545,7 @@ export default function DashboardPage({ params }) {
       {showUpdateData && (
         <DataUpdate
           onClose={() => setShowUpdateData(false)}
-          />
+        />
       )}
     </>
   );
