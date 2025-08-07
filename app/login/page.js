@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BiSolidHide, BiShow, BiLeftArrowAlt } from "react-icons/bi";
+import { toast } from 'react-toastify';
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -24,10 +25,9 @@ export default function LoginPage() {
       const data = await res.json()
       if (!res.ok) {
         setLoading(false);
-        throw new Error(data.error);
+        toast.error(data.message || 'Login failed');
+        return;
       }
-
-      // Store token in localStorage/sessionStorage/cookie as needed
       localStorage.setItem('tb_token', data.token)
       localStorage.setItem('tb_userId', data.userId)
       localStorage.setItem('tb_customerId', data.customerId)
@@ -49,7 +49,8 @@ export default function LoginPage() {
         router.push('/dashboard')
       }
     } catch (err) {
-      alert(err.message || 'Login failed')
+      setLoading(false)
+      toast.error(err.message || 'Login failed!')
     }
   }
   const handleForgotPass = async (e) => {

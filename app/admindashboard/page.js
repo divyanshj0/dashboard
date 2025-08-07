@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     const username= localStorage.getItem('userName');
     setToken(t);
     setName(username);
-    if (!token) {
+    if (!t) {
       router.push('/');
       return;
     }

@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX,FiLayout } from 'react-icons/fi';
+import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout } from 'react-icons/fi';
 import { FaKey } from "react-icons/fa6";
 import clsx from 'clsx';
 import { BsDatabaseUp } from 'react-icons/bs';
@@ -48,7 +48,7 @@ export default function Dashboard() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMenu]);
-  
+
   useEffect(() => {
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
@@ -59,6 +59,7 @@ export default function Dashboard() {
       setUserAuthority(authority); // Set user authority state
 
       if (!token) {
+        localStorage.clear()
         router.push('/');
         return;
       }
@@ -71,6 +72,12 @@ export default function Dashboard() {
         });
 
         const result = await res.json();
+        if (res.status === 401) {
+          localStorage.clear();
+          toast.error('Session expired. Please log in again.');
+          router.push('/');
+          return;
+        }
         setConfig(result.config || null);
         setLayout(result.layout || []);
       } catch (err) {
@@ -109,6 +116,15 @@ export default function Dashboard() {
         }),
       });
 
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
+
       if (res.ok) {
         setConfig(updatedConfig);
         setLayout(newLayout);
@@ -131,7 +147,7 @@ export default function Dashboard() {
     let currentWidgets = config?.widgets || [];
     let currentLayout = config?.layout || [];
 
-    const COLS = 3; 
+    const COLS = 3;
 
     // Deep copy currentWidgets and currentLayout to modify them
     let widgetsToSave = currentWidgets.map(w => ({ ...w }));
@@ -141,8 +157,8 @@ export default function Dashboard() {
     let maxExistingY = 0; // Highest Y coordinate (top of a widget)
     let maxExistingBottom = 0; // Lowest point (bottom of a widget)
     if (currentLayout.length > 0) {
-        maxExistingY = Math.max(...currentLayout.map(item => item.y));
-        maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
+      maxExistingY = Math.max(...currentLayout.map(item => item.y));
+      maxExistingBottom = Math.max(...currentLayout.map(item => item.y + (item.h || 1)));
     }
 
     // Determine initial placement for new widgets
@@ -151,72 +167,72 @@ export default function Dashboard() {
 
     // If there are existing widgets, try to place in the last row
     if (currentLayout.length > 0) {
-        // Find widgets in the row with the highest Y coordinate (the "last" row)
-        const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
-        
-        if (widgetsInLastVisualRow.length > 0) {
-            // Find the rightmost occupied position in that row
-            const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
-            
-            // If there's space after the rightmost widget in the last row
-            if (rightmostXInLastRow < COLS) {
-                currentPlacementX = rightmostXInLastRow;
-                currentPlacementY = maxExistingY; // Place it in the same row
-            }
+      // Find widgets in the row with the highest Y coordinate (the "last" row)
+      const widgetsInLastVisualRow = currentLayout.filter(item => item.y === maxExistingY);
+
+      if (widgetsInLastVisualRow.length > 0) {
+        // Find the rightmost occupied position in that row
+        const rightmostXInLastRow = Math.max(...widgetsInLastVisualRow.map(item => item.x + (item.w || 0)));
+
+        // If there's space after the rightmost widget in the last row
+        if (rightmostXInLastRow < COLS) {
+          currentPlacementX = rightmostXInLastRow;
+          currentPlacementY = maxExistingY; // Place it in the same row
         }
+      }
     }
 
     // Process widgets coming from the modal
     widgetsFromModal.forEach(widgetFromModal => {
-        const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
+      const existingWidget = widgetsToSave.find(w => w.id === widgetFromModal.id);
 
-        if (existingWidget) {
-            // Update existing widget's config (name, type, parameters)
-            Object.assign(existingWidget, widgetFromModal);
-            // Layout is not changed for existing widgets by this process
-            // If it somehow doesn't have a layout item, assign one (fallback)
-            if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
-                 layoutToSave.push({
-                    i: widgetFromModal.id,
-                    x: currentPlacementX,
-                    y: currentPlacementY,
-                    w: widgetFromModal.layout?.w || 3,
-                    h: widgetFromModal.layout?.h || 2,
-                });
-                // Update currentPlacementX/Y for next new widget if this was a new layout
-                currentPlacementX += (widgetFromModal.layout?.w || 3);
-                if (currentPlacementX >= COLS) {
-                    currentPlacementX = 0;
-                    currentPlacementY += (widgetFromModal.layout?.h || 2);
-                }
-            }
-        } else {
-            // It's a BRAND NEW widget
-            const defaultW = widgetFromModal.layout?.w || 3;
-            const defaultH = widgetFromModal.layout?.h || 2;
-
-            // Check if new widget fits in current attempted row and column
-            if (currentPlacementX + defaultW > COLS) {
-                // Doesn't fit in current row at currentPlacementX, move to next overall available row
-                currentPlacementX = 0;
-                currentPlacementY = maxExistingBottom; // Place it below all current widgets
-                // Update maxExistingBottom for subsequent new widgets being added in this batch
-                maxExistingBottom += defaultH; 
-            }
-
-            const newLayoutItem = {
-                i: widgetFromModal.id,
-                x: currentPlacementX,
-                y: currentPlacementY,
-                w: defaultW,
-                h: defaultH,
-            };
-            
-            widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
-            layoutToSave.push(newLayoutItem);
-
-            currentPlacementX += defaultW; // Advance X for the next new widget in the same row
+      if (existingWidget) {
+        // Update existing widget's config (name, type, parameters)
+        Object.assign(existingWidget, widgetFromModal);
+        // Layout is not changed for existing widgets by this process
+        // If it somehow doesn't have a layout item, assign one (fallback)
+        if (!layoutToSave.find(l => l.i === widgetFromModal.id)) {
+          layoutToSave.push({
+            i: widgetFromModal.id,
+            x: currentPlacementX,
+            y: currentPlacementY,
+            w: widgetFromModal.layout?.w || 3,
+            h: widgetFromModal.layout?.h || 2,
+          });
+          // Update currentPlacementX/Y for next new widget if this was a new layout
+          currentPlacementX += (widgetFromModal.layout?.w || 3);
+          if (currentPlacementX >= COLS) {
+            currentPlacementX = 0;
+            currentPlacementY += (widgetFromModal.layout?.h || 2);
+          }
         }
+      } else {
+        // It's a BRAND NEW widget
+        const defaultW = widgetFromModal.layout?.w || 3;
+        const defaultH = widgetFromModal.layout?.h || 2;
+
+        // Check if new widget fits in current attempted row and column
+        if (currentPlacementX + defaultW > COLS) {
+          // Doesn't fit in current row at currentPlacementX, move to next overall available row
+          currentPlacementX = 0;
+          currentPlacementY = maxExistingBottom; // Place it below all current widgets
+          // Update maxExistingBottom for subsequent new widgets being added in this batch
+          maxExistingBottom += defaultH;
+        }
+
+        const newLayoutItem = {
+          i: widgetFromModal.id,
+          x: currentPlacementX,
+          y: currentPlacementY,
+          w: defaultW,
+          h: defaultH,
+        };
+
+        widgetsToSave.push({ ...widgetFromModal, layout: newLayoutItem });
+        layoutToSave.push(newLayoutItem);
+
+        currentPlacementX += defaultW; // Advance X for the next new widget in the same row
+      }
     });
 
     // After processing all widgets from modal, filter out any widgets
@@ -239,6 +255,14 @@ export default function Dashboard() {
           config: updatedConfig,
         }),
       });
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
 
       if (res.ok) {
         setConfig(updatedConfig);
@@ -253,23 +277,23 @@ export default function Dashboard() {
       console.error('Config save error:', err);
       toast.error('Error updating dashboard configuration.');
     } finally {
-        setShowCreateModal(false);
+      setShowCreateModal(false);
     }
   };
 
   const handleGeoFenceChange = async (newGeofence, widgetId) => {
     const updatedWidgets = config.widgets.map(w => {
-        if (w.id === widgetId) {
-            return {
-                ...w,
-                geofence: newGeofence,
-            };
-        }
-        return w;
+      if (w.id === widgetId) {
+        return {
+          ...w,
+          geofence: newGeofence,
+        };
+      }
+      return w;
     });
 
     const updatedConfig = { ...config, widgets: updatedWidgets };
-    
+
     const token = localStorage.getItem('tb_token');
     const userId = localStorage.getItem('tb_userId');
     try {
@@ -281,7 +305,14 @@ export default function Dashboard() {
           config: updatedConfig,
         }),
       });
-
+      if (res.status === 401) {
+        // Token is unauthorized or expired.
+        // Clear localStorage and redirect to login.
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        router.push('/');
+        return; // Stop further execution
+      }
       if (res.ok) {
         toast.success("Geofence saved successfully!");
         setConfig(updatedConfig);
@@ -296,7 +327,7 @@ export default function Dashboard() {
     }
   };
 
-      
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = new Date(timestamp);
@@ -360,7 +391,10 @@ export default function Dashboard() {
                       <FiEdit2 size={20} className="mr-2" /> Customize
                     </button>
                     <button
-                      className="flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full"
+                      className={clsx(
+                        "flex items-center px-4 py-2 text-lg text-blue-600 hover:bg-gray-100 w-full",
+                        { "opacity-50 cursor-not-allowed": !config || config.widgets.length === 0 }
+                      )}
                       onClick={() => {
                         setDraftLayout(layout); // store current layout for editing
                         setSaveLayout(true);
@@ -372,14 +406,16 @@ export default function Dashboard() {
 
                     <button
                       className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-full"
-                      onClick={() => {setShowUpdateData(true); setShowMenu((prev) => !prev);
+                      onClick={() => {
+                        setShowUpdateData(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <BsDatabaseUp size={20} className="mr-2" />Data Update
                     </button>
                     <button
                       className="px-4 py-2 text-blue-600 text-lg flex justify-center items-center hover:bg-gray-100 w-max"
-                      onClick={() => {setShowChangePassword(true); setShowMenu((prev) => !prev);
+                      onClick={() => {
+                        setShowChangePassword(true); setShowMenu((prev) => !prev);
                       }}
                     >
                       <FaKey size={20} className="mr-2" />Change Password
@@ -456,7 +492,7 @@ export default function Dashboard() {
                   <FiLogOut size={20} className="mr-2" /> Logout
                 </button>
               </div>
-              <div className={`${!config || config.widgets.length===0?'hidden':''}`}>
+              <div className={`${!config || config.widgets.length === 0 ? 'hidden' : ''}`}>
                 <p className="font-medium">Last Updated</p>
                 <span>{formatTimestamp(latestTelemetryTime)}</span>
               </div>
@@ -515,13 +551,13 @@ export default function Dashboard() {
 
         {/* Footer */}
         <div className="bg-blue-100 text-center mx-2 md:mx-4  py-4 rounded-lg">
-        <p className="text-xl text-black">
-          © 2025 All rights reserved.
-          <span className="mx-3">
-            Developed and managed by <span className="font-bold text-2xl text-[#fecb02]"><span className="text-[#0c60a6]">TheElite</span>Pro</span>
-          </span>
-        </p>
-      </div>
+          <p className="text-xl text-black">
+            © 2025 All rights reserved.
+            <span className="mx-3">
+              Developed and managed by <span className="font-bold text-2xl text-[#fecb02]"><span className="text-[#0c60a6]">TheElite</span>Pro</span>
+            </span>
+          </p>
+        </div>
       </main>
 
       {/* Modals */}
@@ -540,7 +576,7 @@ export default function Dashboard() {
       {showUpdateData && (
         <DataUpdate
           onClose={() => setShowUpdateData(false)}
-          />
+        />
       )}
       {showChangePassword && (
         <ChangePasswordModal

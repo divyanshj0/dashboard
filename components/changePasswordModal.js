@@ -1,7 +1,11 @@
 'use client';
 import { useState ,useEffect} from 'react';
+import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
+
 
 export default function ChangePasswordModal({ onClose }) {
+    const router = useRouter();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -11,9 +15,13 @@ export default function ChangePasswordModal({ onClose }) {
         e.preventDefault();
         const token = localStorage.getItem('tb_token');
 
-        if (!token) return alert('Not authenticated');
-        if (newPassword !== confirmPassword) return alert('Passwords do not match!');
-        if (!currentPassword || !newPassword) return alert('All fields are required');
+        if (!token){
+            localStorage.clear();
+            router.push('/');
+        } 
+        if (newPassword !== confirmPassword) return toast.error('confrim Password do not match!');
+        if (!currentPassword || !newPassword) return toast.error('All fields are required');
+        if (currentPassword === newPassword && currentPassword) return toast.error('New password can not be same as old');
 
         setLoading(true);
 
@@ -32,11 +40,13 @@ export default function ChangePasswordModal({ onClose }) {
 
             if (!response.ok) throw new Error(data.error || 'Failed to update password');
 
-            alert('✅ Password changed successfully!');
+            toast.success('Password changed successfully!');
+            localStorage.clear();
+            router.push('/')
             onClose();
         } catch (err) {
             console.error(err);
-            alert('❌ ' + err.message);
+            toast.error( err.message);
         } finally {
             setLoading(false);
         }
@@ -52,7 +62,7 @@ export default function ChangePasswordModal({ onClose }) {
       }, [onClose]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center px-2">
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center px-2">
             <div className="bg-white w-full max-w-md p-6 rounded-xl shadow-lg relative">
                 <button
                     onClick={onClose}

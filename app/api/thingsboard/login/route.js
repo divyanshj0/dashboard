@@ -12,20 +12,25 @@ export async function POST(req) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: email, password }),
     })
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      return NextResponse.json(loginData, {status:loginRes.status});
+    }
 
-    if (!loginRes.ok) throw new Error('Login failed')
-
-    const { token } = await loginRes.json()
+    const { token } = loginData;
 
     const userRes = await fetch(`${TB_URL}/api/auth/user`, {
       headers: {
         'X-Authorization': `Bearer ${token}`
       }
     })
+    const userData = await userRes.json();
 
-    if (!userRes.ok) throw new Error('User fetch failed')
+    if (!userRes.ok) {
+      return NextResponse.json(userData, {status:userRes.status});
+    }
 
-    const user = await userRes.json()
+    const user = userData;
     const customerId = user.customerId.id
     const userId=user.id.id
     const userName=user.firstName +" "+user.lastName

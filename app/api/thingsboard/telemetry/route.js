@@ -18,6 +18,9 @@ export async function POST(req) {
     const attrData = await attrRes.json();
     const configJson = typeof attrData === 'object' && attrData.length ? attrData.find((a) => a.key === 'dashboardConfig')?.value : null;
     const config = typeof configJson === 'string' ? JSON.parse(configJson) : configJson;
+    if (!attrRes.ok){
+     return NextResponse.json(attrData, {status:attrData.status})
+    }
 
     return NextResponse.json({
       config,
