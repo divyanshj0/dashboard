@@ -13,14 +13,11 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [widgetToDelete, setWidgetToDelete] = useState(null);
   const [isParamDelete, setIsParamDelete] = useState(false);
   const [paramToDelete, setParamToDelete] = useState(null);
-
   const [availableImages, setAvailableImages] = useState([]);
   const [newImageFile, setNewImageFile] = useState(null);
   const [newImageTitle, setNewImageTitle] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const Tb_Url="https://demo.thingsboard.io"
-  const [showDrawingModal, setShowDrawingModal] = useState(false);
-  const [currentWidgetIndex, setCurrentWidgetIndex] = useState(null);
+  const Tb_Url=process.env.NEXT_PUBLIC_TB_URL;
 
   useEffect(() => {
     if (open) {
@@ -50,7 +47,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
     Promise.all(
       tbDevices.map(dev =>
-        fetch(`https://demo.thingsboard.io/api/plugins/telemetry/DEVICE/${dev.id.id}/keys/timeseries`, {
+        fetch(`${Tb_Url}/api/plugins/telemetry/DEVICE/${dev.id.id}/keys/timeseries`, {
           headers: { 'X-Authorization': `Bearer ${token}` },
         })
           .then(res => {
@@ -115,6 +112,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     setWidgets(w => [...w, {
       id: uuidv4(),
       name: '',
+      unit: '',
       type: 'bar', // Default to bar graph
       parameters: []
     }]);
@@ -223,8 +221,11 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
     if (widgetType === 'map') {
       newParam = { deviceId: '', name: '' };
-    } else {
-      newParam = { deviceId: '', key: '', label: '', unit: '' };
+    } else if(widgetType === 'card') {
+      newParam = { deviceId: '', key: '', label: '', min: '', max: '', unit: '' };
+    }
+    else {
+      newParam = { deviceId: '', key: '', label: '', min: '', max: ''};
     }
 
     setWidgets(w => w.map((x, idx) => idx === widgetIdx
@@ -232,13 +233,30 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       : x
     ));
   };
-
-  const updateParam = (wIdx, pIdx, field, val) => setWidgets(w => w.map((x, idx) => {
-      if (idx !== wIdx) return x;
-      const params = x.parameters.map((p, pi) => pi === pIdx ? { ...p, [field]: val } : p);
-      return { ...x, parameters: params };
-    })
-  );
+    
+  const updateParam = (wIdx, pIdx, field, val) => {
+    if (field === 'min' || field === 'max' || field === 'unit') {
+      // Find the specific deviceId and key for the parameter being updated
+      const currentParam = widgets[wIdx].parameters[pIdx];
+      const { deviceId, key } = currentParam;
+      
+      // Update all parameters that match the same deviceId and key
+      setWidgets(w => w.map(widget => ({
+        ...widget,
+        parameters: widget.parameters.map(param => 
+          (param.deviceId === deviceId && param.key === key)
+          ? { ...param, [field]: val }
+          : param
+        )
+      })));
+    } else {
+      setWidgets(w => w.map((x, idx) => {
+        if (idx !== wIdx) return x;
+        const params = x.parameters.map((p, pi) => pi === pIdx ? { ...p, [field]: val } : p);
+        return { ...x, parameters: params };
+      }));
+    }
+  };
   
   const removeParam = (wIdx, pIdx) => setWidgets(w => w.map((x, idx) => {
       if (idx !== wIdx) return x;
@@ -274,10 +292,12 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       return w.parameters.length > 0 && w.parameters[0].imageId;
     } else if (w.type === 'map') {
         return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
+    } else if (w.type === 'card') {
+      return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
     }
     else {
       return w.parameters.length > 0 &&
-             w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
+             w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
     }
   });
 
@@ -285,7 +305,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
   return (
     <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="relative max-w-3xl w-full mx-4 rounded-2xl shadow-2xl bg-white overflow-y-auto max-h-[90vh] p-0 ring-1 ring-gray-200">
+      <div className="relative max-w-4xl w-full mx-4 rounded-2xl shadow-2xl bg-white overflow-y-auto max-h-[90vh] p-0 ring-1 ring-gray-200">
         {/* Modal Header */}
         <div className="flex items-center justify-between gap-4 border-b px-8 py-6">
           <h2 className="text-2xl font-bold text-gray-800">Configure Widgets</h2>
@@ -306,7 +326,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                 className="group transition border relative py-5 px-6 rounded-xl bg-white hover:shadow-lg hover:border-blue-400 duration-100"
               >
                 {/* Widget Header */}
-                <div className="flex flex-wrap gap-3 mb-4 items-baseline">
+                <div className="flex flex-wrap gap-3 mb-4 items-center">
                   <input
                     type="text"
                     className={clsx(
@@ -320,7 +340,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                   <select
                     value={w.type}
                     onChange={e => update(i, "type", e.target.value)}
-                    className="border bg-white py-1 px-3 text-sm rounded-lg font-medium focus:ring-2 focus:ring-blue-300 outline-none"
+                    className=" md:w-1/6 border bg-white py-1 px-3 text-sm rounded-lg font-medium focus:ring-2 focus:ring-blue-300 outline-none"
                   >
                     <option value="bar">Bar Graph</option>
                     <option value="line">Line Chart</option>
@@ -331,6 +351,15 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
                     <option value="map">Map</option>
                   </select>
+                  {(w.type !== 'image' && w.type !== 'map' && w.type !== 'card') && (
+                    <input
+                      type="text"
+                      placeholder="Unit"
+                      value={w.unit || ''}
+                      onChange={e => update(i, 'unit', e.target.value)}
+                      className="md:w-1/8 text-md bg-transparent outline-none border rounded-md px-2 focus:border-blue-500 duration-200 transition mr-2 py-1"
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() => { setWidgetToDelete(i); setIsDeletePopupOpen(true); }}
@@ -468,41 +497,61 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         {w.parameters.map((p, pi) => (
                           <div
                             key={pi}
-                            className={clsx("grid grid-cols-1 md:grid-cols-5 gap-2 items-center bg-white rounded-lg px-3 py-2 shadow-sm border", 
-                              (!p.deviceId || !p.key || !p.label.trim() || !p.unit.trim()) && "border-red-300 ring-2 ring-red-100"
+                            className={clsx("flex gap-10 items-center bg-white rounded-lg px-3 py-2 shadow-sm border", 
+                              (!p.deviceId || !p.key || !p.label.trim()) && "border-red-300 ring-2 ring-red-100"
                             )}
                           >
-                            <select value={p.deviceId} onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400">
-                              <option value="">Device</option>
-                              {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                            <select value={p.key} onChange={e => updateParam(i, pi, 'key', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400" disabled={!p.deviceId} >
-                              <option value="">Key</option>
-                              {devices.find(d => d.id === p.deviceId)?.keys.map(k =>
-                                <option key={k} value={k}>{k}</option>
-                              ) || []}
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Label"
-                              value={p.label}
-                              onChange={e => updateParam(i, pi, 'label', e.target.value)}
-                              className="border rounded-lg p-2 focus:ring-blue-400"/>
-                            <input
-                              type="text"
-                              placeholder="Unit"
-                              value={p.unit}
-                              onChange={e => updateParam(i, pi, 'unit', e.target.value)}
-                              className="border rounded-lg p-2 focus:ring-blue-400"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true);}}
-                              className="text-red-500 hover:text-red-700 outline-none ml-auto"
-                              title="Remove Parameter"
-                            >
-                              <FiTrash2 size={20} />
-                            </button>
+                            <div className="grid md:grid-cols-3 grid-cols-1 gap-2">
+                                <select value={p.deviceId} onChange={e => updateParam(i, pi, 'deviceId', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400">
+                                  <option value="">Device</option>
+                                  {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <select value={p.key} onChange={e => updateParam(i, pi, 'key', e.target.value)} className="border rounded-lg p-2 focus:ring-blue-400" disabled={!p.deviceId} >
+                                  <option value="">Key</option>
+                                  {devices.find(d => d.id === p.deviceId)?.keys.map(k =>
+                                    <option key={k} value={k}>{k}</option>
+                                  ) || []}
+                                </select>
+                                <input
+                                  type="text"
+                                  placeholder="Label"
+                                  value={p.label}
+                                  onChange={e => updateParam(i, pi, 'label', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"/>
+                                {(w.type === 'card') && (
+                                  <input
+                                    type="text"
+                                    placeholder="Unit"
+                                    value={p.unit || ''}
+                                    onChange={e => updateParam(i, pi, 'unit', e.target.value)}
+                                    className="border rounded-lg p-2 focus:ring-blue-400"
+                                  />
+                                )}
+                                <input
+                                  type="number"
+                                  placeholder="Min Value"
+                                  value={p.min || ''}
+                                  onChange={e => updateParam(i, pi, 'min', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"
+                                />
+                                 <input
+                                  type="number"
+                                  placeholder="Max Value"
+                                  value={p.max || ''}
+                                  onChange={e => updateParam(i, pi, 'max', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"
+                                />
+                            </div>
+                            <div className="flex justify-center items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true);}}
+                                  className="text-red-500 hover:text-red-700 outline-none"
+                                  title="Remove Parameter"
+                                >
+                                  <FiTrash2 size={28} />
+                                </button>
+                            </div>
                           </div>
                         ))}
                       </div>

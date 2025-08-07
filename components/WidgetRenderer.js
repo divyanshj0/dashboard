@@ -37,13 +37,13 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
             {(() => {
               switch (w.type) {
                 case 'donut':
-                  return <Efficiency parameters={w.parameters} label={w.name} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
+                  return <Efficiency parameters={w.parameters} label={w.name} token={token} unit={w.unit} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'pie':
-                  return <EnergyEfficiency parameters={w.parameters} label={w.name} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
+                  return <EnergyEfficiency parameters={w.parameters} label={w.name} token={token} unit={w.unit} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'line':
-                  return <TreatedWaterChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} onLatestTimestampChange={onLatestTimestampChange} />;
+                  return <TreatedWaterChart title={w.name} parameters={w.parameters} token={token} unit={w.unit} saveLayout={saveLayout}  onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'bar':
-                  return <ChemicalChart title={w.name} parameters={w.parameters} token={token} saveLayout={saveLayout} onLatestTimestampChange={onLatestTimestampChange} />;
+                  return <ChemicalChart title={w.name} parameters={w.parameters} token={token} unit={w.unit} saveLayout={saveLayout} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'card':
                   return <WaterProperty title={w.name} parameters={w.parameters} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
                 case 'image':

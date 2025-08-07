@@ -63,7 +63,7 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function ChemicalChart({ title = "", parameters = [], token, saveLayout, onLatestTimestampChange }) {
+export default function ChemicalChart({ title = "", parameters = [], token, saveLayout,unit, onLatestTimestampChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -154,7 +154,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     data: getSeriesData(p.key, p.deviceId),
     value: getSeriesData(p.key, p.deviceId)?.slice(-1)[0]?.value || null,
     label: p.label || p.key,
-    unit: p.unit || '',
+    unit: unit || '',
   }));
 
   const chartData = transformSeries(series);
@@ -200,7 +200,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           }}
         />
         <YAxis>
-          <Label value={series[0]?.unit || 'Value'} angle={-90} offset={15} fontSize={20} position="insideLeft" />
+          <Label value={unit || 'Value'} angle={-90} offset={15} fontSize={20} position="insideLeft" />
         </YAxis>
         <Tooltip
           labelFormatter={(ts) => new Date(ts).toLocaleString()}
