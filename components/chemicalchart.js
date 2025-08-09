@@ -74,6 +74,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   const [endDate, setEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
   const [showCustomField, setShowCustomField] = useState(false)
+  const [isCustomRangeApplied, setIsCustomRangeApplied] = useState(false);
 
   // zoom / pan state
   const [fullData, setFullData] = useState([]); // complete transformed series
@@ -97,7 +98,6 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   const touchStartWindow = useRef({ startIdx: 0, endIdx: -1 });
   const touchPreviewRef = useRef({ startIdx: 0, endIdx: -1 });
 
-  // Fetch time series data (keeps same behaviour as before)
   const fetchTimeSeriesData = async () => {
     setLoading(true);
     const result = {};
@@ -170,10 +170,14 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
 
   useEffect(() => {
     if (parameters.length > 0 && token) {
+      if (view === 'custom' && !isCustomRangeApplied) {
+        // Do not fetch until "Go" is clicked
+        return;
+      }
       fetchTimeSeriesData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parameters, token, view, startDate, endDate]);
+  }, [parameters, token, view, isCustomRangeApplied]);
 
   // Build series as before (keeps labels & units)
   const getSeriesData = (key, deviceId) => timeSeries[`${deviceId}_${key}`] || [];
@@ -186,8 +190,8 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   }));
 
   // When timeSeries (and therefore series) changes, regenerate transformed fullData and reset zoom window
+  const transformed = transformSeries(series);
   useEffect(() => {
-    const transformed = transformSeries(series);
     setFullData(transformed);
     setVisibleData(transformed);
     if (transformed.length > 0) {
@@ -403,11 +407,12 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     setView(newView);
     if (newView === 'custom') {
       setShowCustomInputs(true);
-      setShowCustomField(true);
+      setIsCustomRangeApplied(false);
     } else {
       setShowCustomInputs(false);
       setStartDate('');
       setEndDate('');
+      setIsCustomRangeApplied(false);
       fetchTimeSeriesData();
     }
   };
@@ -424,7 +429,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   }, [isOpen]);
 
   // Chart renderer (uses visibleData)
-  const Chart = ({ data, fullView }) => (
+  const Chart = ({ data, fullView, view }) => (
     <div
       ref={containerRef}
       onMouseDown={handleMouseDown}
@@ -436,10 +441,13 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       onTouchEnd={handleTouchEnd}
       style={{
         width: '100%',
-        height: fullView ? '90%' : '80%',
+        height: fullView
+          ? '90%'
+          : (view === 'custom' ? 'calc(90% - 100px)' : '90%'),
         userSelect: 'none',
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
+
     >
       <ResponsiveContainer width="95%" height="100%">
         <BarChart data={data}>
@@ -481,84 +489,92 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   );
 
   return (
-    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm">
-      <div className="flex items-center justify-between px-2 pt-1">
-        <p className="text-lg font-medium">{title}</p>
-        <div className={`${saveLayout ? 'hidden' : 'flex gap-5 items-center'} pt-1`}>
-          <div className="flex items-center gap-1">
+    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4">
+      {/* Header + selector */}
+      <div className="flex items-center justify-between">
+        <p className="text-xl font-semibold">{title}</p>
+        <div className={`${saveLayout ? 'hidden' : 'flex'} items-center gap-3`}>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => handleViewChange('hourly')}
-              aria-label="Daily view"
-              className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'hourly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'} ${showCustomField ? 'hidden' : ''}`}
+              aria-pressed={view === 'hourly'}
+              className={`px-4 py-2 rounded-sm font-medium shadow-sm transition-shadow duration-150 ${view === 'hourly' ? 'bg-blue-600 text-white ring-2 ring-blue-100' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               D
             </button>
             <button
               onClick={() => handleViewChange('weekly')}
-              aria-label="Weekly view"
-              className={`w-8 h-8 flex items-center justify-center rounded border ${view === 'weekly' ? 'bg-blue-100 border-blue-500' : 'border-gray-300'} ${showCustomField ? 'hidden' : ''}`}
+              aria-pressed={view === 'weekly'}
+              className={`px-4 py-2 rounded-sm font-medium shadow-sm transition-shadow duration-150 ${view === 'weekly' ? 'bg-blue-600 text-white ring-2 ring-blue-100' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               W
             </button>
             <button
               onClick={() => handleViewChange('custom')}
-              aria-label="Custom date range"
-              className={`w-8 h-8 flex items-center justify-center rounded border ${showCustomInputs ? 'bg-blue-100 border-blue-500' : 'border-gray-300'}`}
+              aria-pressed={view === 'custom'}
+              className={`px-4 py-2 rounded-sm font-medium shadow-sm transition-shadow duration-150 ${view === 'custom' ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             >
               C
             </button>
-            {showCustomField && (
-              <div className="flex items-center gap-2 ml-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="border rounded p-1 text-sm"
-                  aria-label="Start date"
-                  max={endDate || new Date().toISOString().split('T')[0]}
-                />
-                <span>to</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="border rounded p-1 text-sm"
-                  aria-label="End date"
-                  min={startDate}
-                  max={new Date().toISOString().split('T')[0]}
-                />
-                <button
-                  onClick={() => {
-                    setShowCustomField(false);
-                    fetchTimeSeriesData();
-                  }}
-                  className="bg-blue-500 text-white px-2 py-1 rounded text-sm"
-                  aria-label="Apply custom date range"
-                >
-                  Go
-                </button>
-              </div>
-            )}
           </div>
-
           <button onClick={resetZoom} className="border px-2 py-1 rounded">Reset Zoom</button>
-
-          <button onClick={() => downloadCSV(fullData, title, view)} title="Download DataFile" className='cursor-pointer' >
+          <button onClick={() => downloadCSV(fullData, title, view)} title="Download DataFile" className="cursor-pointer">
             <FaFileDownload size={20} />
           </button>
-
-          <button onClick={() => setIsOpen(true)} title="fullscreen" className='cursor-pointer'>
+          <button onClick={() => setIsOpen(true)} title="fullscreen" className="cursor-pointer">
             <FiMaximize size={20} />
           </button>
         </div>
       </div>
-
+      {/* Date inputs card */}
+      {showCustomInputs && (
+        <div className="w-full h-[100px] my-2 max-w-4xl bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm">
+          <div className="flex w-full gap-4 items-end">
+            <div className='w-[50%]'>
+              <label className="text-sm font-semibold text-gray-700">Start Date:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="mt-2 w-full border rounded-md p-3 bg-white"
+                aria-label="Start date"
+                max={endDate || new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className='w-[50%]'>
+              <label className="text-sm font-semibold text-gray-700">End Date:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="mt-2 w-full border rounded-md p-3 bg-white"
+                aria-label="End date"
+                min={startDate}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="">
+              <button
+                onClick={() => { setIsCustomRangeApplied(true); }}
+                disabled={!startDate || !endDate}
+                className={`px-4 py-2 rounded-md text-sm ${(!startDate || !endDate) ? 'bg-blue-200 text-white cursor-not-allowed' : 'bg-blue-600 text-white'}`}
+              >
+                Go
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div className="h-full flex items-center justify-center">
           <p>Loading data...</p>
         </div>
+      ) : view === 'custom' && !isCustomRangeApplied ? (
+        <div className="h-full flex items-center justify-center text-gray-500">
+          <p>Please select a time range and click "Go".</p>
+        </div>
       ) : (
-        <Chart data={visibleData} fullView={false} />
+        <Chart data={visibleData} fullView={false} view={view} />
       )}
 
       {isOpen && createPortal(

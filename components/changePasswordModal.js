@@ -17,6 +17,7 @@ export default function ChangePasswordModal({ onClose }) {
 
         if (!token) {
             localStorage.clear();
+            toast.info('Session expired. Please log in again.');
             router.push('/');
         }
         if (newPassword !== confirmPassword) return toast.error('confrim Password do not match!');
@@ -46,7 +47,7 @@ export default function ChangePasswordModal({ onClose }) {
             }
             const data = await response.json();
 
-            if (!response.ok) throw new Error(data.error || 'Failed to update password');
+            if (!response.ok) return toast.error(data.error||"failed ")
 
             toast.success('Password changed successfully!');
             localStorage.clear();
