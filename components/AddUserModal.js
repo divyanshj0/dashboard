@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import clsx from 'clsx';
+
 export default function AddUserModal({ user, onChange, onSubmit, save, onClose }) {
   useEffect(() => {
     function handleKeyDown(event) {
@@ -9,7 +11,17 @@ export default function AddUserModal({ user, onChange, onSubmit, save, onClose }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-  const isValid = user.firstName.trim() !== '' && user.email.trim() !== '' && user.password.trim() !== '' && user.confirmPassword.trim() !== '' && user.password === user.confirmPassword;
+
+  // Password policy validation rules
+  const passwordLengthValid = user.password.length >= 8 && user.password.length <= 72;
+  const hasUppercase = /[A-Z]/.test(user.password);
+  const hasNumber = /[0-9]/.test(user.password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(user.password);
+
+  const isPasswordPolicyMet = passwordLengthValid && hasUppercase && hasNumber && hasSpecialChar;
+
+  const isValid = user.firstName.trim() !== '' && user.email.trim() !== '' && user.password.trim() !== '' && user.confirmPassword.trim() !== '' && user.password === user.confirmPassword && isPasswordPolicyMet;
+
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
@@ -31,6 +43,24 @@ export default function AddUserModal({ user, onChange, onSubmit, save, onClose }
           {user.confirmPassword && user.password !== user.confirmPassword && (
             <div style={{ color: 'red', fontSize: '0.9em' }}>Password do not match</div>
           )}
+
+          <div className="text-sm space-y-1">
+            <h4 className="font-semibold text-gray-700">Password must contain:</h4>
+            <ul className="list-disc list-inside space-y-1">
+              <li className={clsx({ 'text-green-600': passwordLengthValid, 'text-red-500': !passwordLengthValid })}>
+                Between 8 and 72 characters
+              </li>
+              <li className={clsx({ 'text-green-600': hasUppercase, 'text-red-500': !hasUppercase })}>
+                At least one uppercase character
+              </li>
+              <li className={clsx({ 'text-green-600': hasNumber, 'text-red-500': !hasNumber })}>
+                At least one number
+              </li>
+              <li className={clsx({ 'text-green-600': hasSpecialChar, 'text-red-500': !hasSpecialChar })}>
+                At least one special character
+              </li>
+            </ul>
+          </div>
 
           <div className="flex justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
