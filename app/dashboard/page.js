@@ -58,7 +58,7 @@ export default function Dashboard() {
       setToken(token);
       setUserAuthority(authority); // Set user authority state
 
-      if (!token) {
+      if (!token||authority!=='CUSTOMER_USER') {
         localStorage.clear()
         router.push('/');
         return;

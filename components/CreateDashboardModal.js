@@ -1,4 +1,3 @@
-'use client';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { FiPlus, FiTrash2, FiX, FiUploadCloud } from 'react-icons/fi';
@@ -6,8 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
-  const router=useRouter()
+  const router = useRouter();
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
@@ -125,7 +125,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       id: uuidv4(),
       name: '',
       unit: '',
-      type: 'bar', // Default to bar graph
+      type: 'bar',
       parameters: []
     }]);
   };
@@ -240,8 +240,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       newParam = { deviceId: '', name: '' };
     } else if (widgetType === 'card') {
       newParam = { deviceId: '', key: '', label: '', min: '', max: '', unit: '' };
-    }
-    else {
+    } else if (widgetType === 'table') {
+      newParam = { deviceId: '', name: '', keys: [] };
+    } else {
       newParam = { deviceId: '', key: '', label: '', min: '', max: '' };
     }
 
@@ -275,12 +276,51 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     }
   };
 
+  const handleTableKeyChange = (widgetIndex, paramIndex, key, isChecked) => {
+    const updatedWidgets = [...widgets];
+    const widgetToUpdate = updatedWidgets[widgetIndex];
+    const allDeviceParams = widgetToUpdate.parameters;
+
+    const keyWithUnit = isChecked ? { key, unit: '' } : null;
+
+    const newAllDeviceParams = allDeviceParams.map((p, i) => {
+      let newKeys = p.keys ? [...p.keys] : [];
+      const keyExists = newKeys.some(k => k.key === key);
+
+      if (isChecked && !keyExists) {
+        newKeys.push(keyWithUnit);
+      } else if (!isChecked && keyExists) {
+        newKeys = newKeys.filter(k => k.key !== key);
+      }
+
+      return { ...p, keys: newKeys };
+    });
+
+    updatedWidgets[widgetIndex] = { ...widgetToUpdate, parameters: newAllDeviceParams };
+    setWidgets(updatedWidgets);
+  };
+  
+  const handleTableUnitChange = (widgetIndex, paramIndex, key, unitValue) => {
+    setWidgets(widgets => widgets.map((widget, wIdx) => {
+      if (wIdx !== widgetIndex) return widget;
+      const updatedParams = widget.parameters.map(param => {
+        const newKeys = param.keys.map(k => {
+          if (k.key === key) {
+            return { ...k, unit: unitValue };
+          }
+          return k;
+        });
+        return { ...param, keys: newKeys };
+      });
+      return { ...widget, parameters: updatedParams };
+    }));
+  };
+  
   const removeParam = (wIdx, pIdx) => setWidgets(w => w.map((x, idx) => {
     if (idx !== wIdx) return x;
     const params = x.parameters.filter((_, pi) => pi !== pIdx);
     return { ...x, parameters: params };
-  })
-  );
+  }));
 
   const handleDeviceChange = (widgetIndex, paramIndex, deviceId) => {
     const selectedDevice = devices.find(d => d.id === deviceId);
@@ -291,7 +331,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           return {
             ...param,
             deviceId: deviceId,
-            name: selectedDevice ? selectedDevice.name : ''
+            name: selectedDevice ? selectedDevice.name : '',
+            keys: []
           };
         }
         return param;
@@ -311,8 +352,21 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
     } else if (w.type === 'card') {
       return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
-    }
-    else {
+    } else if (w.type === 'table') {
+      if (w.parameters.length === 0) return false;
+      const firstParamKeys = w.parameters[0].keys.map(k => k.key).sort();
+      const firstParamUnits = w.parameters[0].keys.map(k => k.unit).filter(Boolean);
+      if (firstParamKeys.length === 0 || firstParamUnits.length !== firstParamKeys.length) return false;
+
+      return w.parameters.every(p => {
+        const currentParamKeys = p.keys.map(k => k.key).sort();
+        const currentParamUnits = p.keys.map(k => k.unit).filter(Boolean);
+        return p.deviceId && p.name &&
+               currentParamKeys.length === firstParamKeys.length &&
+               currentParamUnits.length === currentParamKeys.length &&
+               currentParamKeys.every((key, i) => key === firstParamKeys[i]);
+      });
+    } else {
       return w.parameters.length > 0 &&
         w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
     }
@@ -367,8 +421,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <option value="chemicaldosage">Chemical Dosage</option>
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
                     <option value="map">Map</option>
+                    <option value="table">Table</option>
                   </select>
-                  {(w.type !== 'image' && w.type !== 'map' && w.type !== 'card') && (
+                  {(w.type !== 'image' && w.type !== 'map' && w.type !== 'card' && w.type !== 'table') && (
                     <input
                       type="text"
                       placeholder="Unit"
@@ -493,6 +548,82 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                             </button>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  ) : w.type === 'table' ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-700">Devices and Telemetry Keys</h4>
+                        <button
+                          type="button"
+                          onClick={() => addParam(i)}
+                          className="inline-flex items-center text-blue-700 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 font-medium text-sm"
+                        >
+                          <FiPlus size={18} className="mr-1" /> Add Device
+                        </button>
+                      </div>
+                      {w.parameters.length === 0 && (
+                        <div className="text-xs text-gray-500 mb-4">Add at least one device to display on the table.</div>
+                      )}
+                      <div className="space-y-4">
+                        {w.parameters.map((p, pi) => {
+                          const selectedDeviceKeys = devices.find(d => d.id === p.deviceId)?.keys || [];
+                          const firstParamKeys = w.parameters[0]?.keys.map(k => k.key).sort();
+                          const currentParamKeys = p.keys.map(k => k.key).sort();
+                          const isInvalid = firstParamKeys && firstParamKeys.length > 0 && JSON.stringify(firstParamKeys) !== JSON.stringify(currentParamKeys);
+                          
+                          return (
+                            <div key={pi} className={clsx("flex flex-col gap-2 p-3 border rounded-lg bg-white shadow-sm", {
+                              'border-red-500 ring-2 ring-red-300': isInvalid
+                            })}>
+                              <div className="flex justify-between items-center">
+                                <select
+                                  value={p.deviceId}
+                                  onChange={e => handleDeviceChange(i, pi, e.target.value)}
+                                  className="flex-1 border rounded-lg p-2 focus:ring-blue-400"
+                                >
+                                  <option value="">Select Device</option>
+                                  {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
+                                  className="ml-2 text-red-500 hover:text-red-700"
+                                >
+                                  <FiTrash2 size={20} />
+                                </button>
+                              </div>
+                              <div className="flex flex-col gap-2 p-3 border rounded-lg bg-gray-100">
+                                <h5 className="text-sm font-semibold text-gray-800">Telemetry Keys:</h5>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {selectedDeviceKeys.map(key => (
+                                    <div key={key} className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        id={`key-${w.id}-${p.deviceId}-${key}`}
+                                        checked={p.keys?.some(k => k.key === key) || false}
+                                        onChange={e => handleTableKeyChange(i, pi, key, e.target.checked)}
+                                        className="form-checkbox"
+                                      />
+                                      <label htmlFor={`key-${w.id}-${p.deviceId}-${key}`} className="text-sm cursor-pointer">
+                                        {key}
+                                      </label>
+                                      {p.keys?.some(k => k.key === key) && (
+                                        <input
+                                          type="text"
+                                          placeholder="Unit"
+                                          value={p.keys.find(k => k.key === key)?.unit || ''}
+                                          onChange={e => handleTableUnitChange(i, pi, key, e.target.value)}
+                                          className="w-20 text-xs border rounded-md px-1"
+                                        />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (

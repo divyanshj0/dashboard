@@ -6,6 +6,7 @@ import TreatedWaterChart from './treatedwatergraph';
 import ChemicalChart from './chemicalchart';
 import ImageComponent from './Imagecomponent';
 import MapWidget from './MapWidget';
+import TableComponent from './DynamicTable'
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -31,7 +32,7 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
     >
       {config.widgets.map((w, i) => {
         const key = w.id || w.name || `widget-${i}`;
-        
+
         return (
           <div key={key} className={`${saveLayout ? 'bg-white p-2' : ''} z-[1] rounded`}>
             {(() => {
@@ -50,6 +51,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                   return <ImageComponent title={w.parameters[0].title} imgsrc={w.parameters[0].publicLink}/>;
                 case 'map':
                   return <MapWidget title={w.name} parameters={w.parameters} token={token} geoFence={w.geofence} onGeofenceChange={(geofence)=>{onGeofenceChange(geofence,w.id)} }/>;
+                case 'table':
+                  return <TableComponent title={w.name} parameters={w.parameters} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
                 default:
                   return (
                     <div className="text-center">
