@@ -73,8 +73,10 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
-  const [showCustomField, setShowCustomField] = useState(false)
   const [isCustomRangeApplied, setIsCustomRangeApplied] = useState(false);
+  const [displayedStartDate, setDisplayedStartDate] = useState('');
+  const [displayedEndDate, setDisplayedEndDate] = useState('');
+
 
   // zoom / pan state
   const [fullData, setFullData] = useState([]); // complete transformed series
@@ -413,8 +415,29 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       setStartDate('');
       setEndDate('');
       setIsCustomRangeApplied(false);
+      setDisplayedStartDate('');
+      setDisplayedEndDate('');
       fetchTimeSeriesData();
     }
+  };
+
+  const handleCustomRangeSubmit = () => {
+    if (startDate && endDate) {
+      setIsCustomRangeApplied(true);
+      setShowCustomInputs(false);
+      setDisplayedStartDate(startDate);
+      setDisplayedEndDate(endDate);
+    }
+  };
+
+  const formatTimestamp = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1');
   };
 
   useEffect(() => {
@@ -441,9 +464,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       onTouchEnd={handleTouchEnd}
       style={{
         width: '100%',
-        height: fullView
-          ? '90%'
-          : (view === 'custom' ? 'calc(90% - 100px)' : '90%'),
+        height: '85 %',
         userSelect: 'none',
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
@@ -526,6 +547,12 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           </button>
         </div>
       </div>
+      {/* History Line */}
+      {view === 'custom' && isCustomRangeApplied && displayedStartDate && displayedEndDate && (
+          <p className="mt-2 text-md text-gray-500">
+            History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
+          </p>
+      )}
       {/* Date inputs card */}
       {showCustomInputs && (
         <div className="w-full h-[100px] my-2 max-w-4xl bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm">
@@ -555,7 +582,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
             </div>
             <div className="">
               <button
-                onClick={() => { setIsCustomRangeApplied(true); }}
+                onClick={handleCustomRangeSubmit}
                 disabled={!startDate || !endDate}
                 className={`px-4 py-2 rounded-md text-sm ${(!startDate || !endDate) ? 'bg-blue-200 text-white cursor-not-allowed' : 'bg-blue-600 text-white'}`}
               >

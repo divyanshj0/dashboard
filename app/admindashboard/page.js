@@ -9,7 +9,7 @@ import DeletePopup from '@/components/deletepopup';
 import ChangePasswordModal from '@/components/changePasswordModal';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus, FiLogOut } from 'react-icons/fi';
+import { FiTrash, FiUser, FiUserPlus, FiMonitor, FiPlus, FiLogOut, FiSearch } from 'react-icons/fi';
 import { TbDeviceDesktopPlus } from "react-icons/tb";
 import { FaKey } from 'react-icons/fa6';
 import EditDeviceModal from '@/components/editdevicemodal';
@@ -44,6 +44,17 @@ export default function AdminDashboard() {
   const [deviceToDelete, setDeviceToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCustomers = customers.filter(customer => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return (
+      customer.title?.toLowerCase().includes(lowerSearchTerm) ||
+      customer.city?.toLowerCase().includes(lowerSearchTerm) ||
+      customer.country?.toLowerCase().includes(lowerSearchTerm)
+    );
+  });
+  
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -381,8 +392,18 @@ export default function AdminDashboard() {
         </div>
         <div className='min-h-[74vh]'>
           <h1 className="text-3xl font-bold my-6 text-gray-800">Admin Dashboard</h1>
+          <div className="relative mb-4">
+              <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search customers by name, city or country..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {customers.map((customer) => (
+            {filteredCustomers.map((customer) => (
               <div
                 key={customer.id.id}
                 className="bg-white shadow-md p-5 rounded-xl border border-gray-200 hover:shadow-xl transition"

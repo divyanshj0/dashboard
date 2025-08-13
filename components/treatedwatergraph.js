@@ -93,6 +93,8 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
   const [endDate, setEndDate] = useState('');
   const [showCustomInputs, setShowCustomInputs] = useState(false);
   const [isCustomRangeApplied, setIsCustomRangeApplied] = useState(false);
+  const [displayedStartDate, setDisplayedStartDate] = useState('');
+  const [displayedEndDate, setDisplayedEndDate] = useState('');
 
   // --- Zoom / Pan State (indices into fullChartData) ---
   const [fullChartData, setFullChartData] = useState([]);
@@ -427,8 +429,30 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
       setStartDate('');
       setEndDate('');
       setIsCustomRangeApplied(false);
+      setDisplayedStartDate('');
+      setDisplayedEndDate('');
       fetchTimeSeriesData();
     }
+  };
+
+  const handleCustomRangeSubmit = () => {
+    if (startDate && endDate) {
+      setIsCustomRangeApplied(true);
+      setShowCustomInputs(false);
+      setDisplayedStartDate(startDate);
+      setDisplayedEndDate(endDate);
+    }
+  };
+  
+  const formatTimestamp = (dateString) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1');
   };
 
   useEffect(() => {
@@ -453,10 +477,8 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-        width: '100%',
-        height: fullView
-          ? '90%'
-          : (view === 'custom' ? 'calc(90% - 100px)' : '90%'),
+        width:'100%',
+        height:'85%',
         userSelect: 'none',
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
@@ -548,35 +570,41 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
           </button>
         </div>
       </div>
+      {/* History Line */}
+      {view === 'custom' && isCustomRangeApplied && displayedStartDate && displayedEndDate && (
+          <p className="mt-2 text-md text-gray-500">
+            History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
+          </p>
+      )}
       {/* Date inputs card */}
       {showCustomInputs && (
         <div className="w-full my-2 max-w-4xl bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm">
           <div className="flex gap-4 items-end">
             <div className='w-[40%]'>
-              <label className="text-sm font-semibold text-gray-700">Start Date:</label>
+              <label className="block text-sm">Start Date:</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="mt-2 w-full border rounded-md p-3 bg-white"
+                className="mt-2 w-full border p-2 rounded"
                 aria-label="Start date"
                 max={endDate || new Date().toISOString().split('T')[0]}
               />
             </div>
             <div className='w-[40%]'>
-              <label className="text-sm font-semibold text-gray-700">End Date:</label>
+              <label className="block text-sm">End Date:</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="mt-2 w-full border rounded-md p-3 bg-white"
+                className="mt-2 w-full border p-2 rounded"
                 aria-label="End date"
                 min={startDate}
                 max={new Date().toISOString().split('T')[0]}
               />
             </div>
             <button
-                onClick={() => { setIsCustomRangeApplied(true); }}
+                onClick={handleCustomRangeSubmit}
                 disabled={!startDate || !endDate}
                 className={`px-4 py-2 w-12 h-9 rounded-md text-sm ${(!startDate || !endDate) ? 'bg-blue-200 text-white cursor-not-allowed' : 'bg-blue-600 text-white'}`}
             >

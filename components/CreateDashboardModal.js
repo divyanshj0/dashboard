@@ -5,9 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
-  const router = useRouter();
+  const router=useRouter()
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
@@ -125,7 +124,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       id: uuidv4(),
       name: '',
       unit: '',
-      type: 'bar',
+      type: 'bar', // Default to bar graph
       parameters: []
     }]);
   };
@@ -237,7 +236,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     let newParam = {};
 
     if (widgetType === 'map') {
-      newParam = { deviceId: '', name: '' };
+      newParam = { deviceId: '', name: '', latKey: '', lonKey: '' };
     } else if (widgetType === 'card') {
       newParam = { deviceId: '', key: '', label: '', min: '', max: '', unit: '' };
     } else if (widgetType === 'table') {
@@ -328,6 +327,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       if (wIdx !== widgetIndex) return widget;
       const updatedParams = widget.parameters.map((param, pIdx) => {
         if (pIdx === paramIndex) {
+          // Keep the existing keys, just update deviceId and name
           return {
             ...param,
             deviceId: deviceId,
@@ -340,7 +340,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       return { ...widget, parameters: updatedParams };
     }));
   };
-
+  
   const handleNext = () => onNext(widgets);
 
   const formValid = widgets.length > 0 && widgets.every(w => {
@@ -349,7 +349,8 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     if (w.type === 'image') {
       return w.parameters.length > 0 && w.parameters[0].imageId;
     } else if (w.type === 'map') {
-      return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.name);
+      if (w.parameters.length === 0) return false;
+      return w.parameters.every(p => p.deviceId && p.name && p.latKey && p.lonKey);
     } else if (w.type === 'card') {
       return w.parameters.length > 0 && w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '' && p.unit.trim() !== '');
     } else if (w.type === 'table') {
@@ -384,9 +385,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
             <FiX size={28} />
           </button>
         </div>
-
         <div className="px-8 py-8 bg-gray-50">
-          {/* Widgets */}
           <div className="space-y-6">
             {!widgets.length && (
               <p className="text-center text-gray-500">Click "Add Widget" to start configuring your dashboard.</p>
@@ -396,7 +395,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                 key={w.id}
                 className="group transition border relative py-5 px-6 rounded-xl bg-white hover:shadow-lg hover:border-blue-400 duration-100"
               >
-                {/* Widget Header */}
                 <div className="flex flex-wrap gap-3 mb-4 items-center">
                   <input
                     type="text"
@@ -418,7 +416,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <option value="donut">Donut</option>
                     <option value="pie">Pie Chart</option>
                     <option value="card">Value Card</option>
-                    <option value="chemicaldosage">Chemical Dosage</option>
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
                     <option value="map">Map</option>
                     <option value="table">Table</option>
@@ -441,7 +438,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     <FiTrash2 size={24} />
                   </button>
                 </div>
-
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   {w.type === 'image' ? (
                     <div className="space-y-4">
@@ -523,31 +519,54 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         <div className="text-xs text-gray-500 mb-4">Add at least one device to display on the map.</div>
                       )}
                       <div className="space-y-4">
-                        {w.parameters.map((p, pi) => (
-                          <div
-                            key={pi}
-                            className={clsx("grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-white rounded-lg px-3 py-2 shadow-sm border",
-                              !p.deviceId && "border-red-300 ring-2 ring-red-100"
-                            )}
-                          >
-                            <select
-                              value={p.deviceId}
-                              onChange={e => handleDeviceChange(i, pi, e.target.value)}
-                              className="border rounded-lg p-2 focus:ring-blue-400"
+                        {w.parameters.map((p, pi) => {
+                           const selectedDeviceKeys = devices.find(d => d.id === p.deviceId)?.keys || [];
+                           const isInvalid = !p.deviceId || !p.latKey || !p.lonKey;
+                           
+                           return (
+                            <div
+                              key={pi}
+                              className={clsx("grid grid-cols-1 md:flex md:gap-5 items-center bg-white rounded-lg px-3 py-2 shadow-sm border",
+                                isInvalid && "border-red-300 ring-2 ring-red-100"
+                              )}
                             >
-                              <option value="">Select Device</option>
-                              {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
-                              className="text-red-500 hover:text-red-700 outline-none ml-auto"
-                              title="Remove Device"
-                            >
-                              <FiTrash2 size={20} />
-                            </button>
-                          </div>
-                        ))}
+                                <select
+                                  value={p.deviceId}
+                                  onChange={e => updateParam(i, pi, 'deviceId', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"
+                                >
+                                  <option value="">Select Device</option>
+                                  {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                                <select
+                                  value={p.latKey}
+                                  onChange={e => updateParam(i, pi, 'latKey', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"
+                                  disabled={!p.deviceId}
+                                >
+                                  <option value="">Select Latitude Key</option>
+                                  {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                                </select>
+                                <select
+                                  value={p.lonKey}
+                                  onChange={e => updateParam(i, pi, 'lonKey', e.target.value)}
+                                  className="border rounded-lg p-2 focus:ring-blue-400"
+                                  disabled={!p.deviceId}
+                                >
+                                  <option value="">Select Longitude Key</option>
+                                  {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
+                                  className="text-red-500 hover:text-red-700 outline-none ml-auto"
+                                  title="Remove Device"
+                                >
+                                  <FiTrash2 size={20} />
+                                </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : w.type === 'table' ? (
@@ -595,7 +614,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                               </div>
                               <div className="flex flex-col gap-2 p-3 border rounded-lg bg-gray-100">
                                 <h5 className="text-sm font-semibold text-gray-800">Telemetry Keys:</h5>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                   {selectedDeviceKeys.map(key => (
                                     <div key={key} className="flex items-center gap-2">
                                       <input
@@ -614,7 +633,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                                           placeholder="Unit"
                                           value={p.keys.find(k => k.key === key)?.unit || ''}
                                           onChange={e => handleTableUnitChange(i, pi, key, e.target.value)}
-                                          className="w-20 text-xs border rounded-md px-1"
+                                          className="w-14 md:w-20 text-xs border rounded-md px-1"
                                         />
                                       )}
                                     </div>
@@ -729,8 +748,6 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
             onCancel={() => { setIsParamDelete(false); setWidgetToDelete(null); setParamToDelete(null); }}
           />
         )}
-
-        {/* Footer */}
         <div className="flex items-center justify-between px-8 py-6 border-t bg-white">
           <button
             type="button"

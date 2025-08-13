@@ -10,12 +10,13 @@ import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
 import ChangePasswordModal from '@/components/changePasswordModal';
 import { toast } from 'react-toastify';
+import ConfigReportModal from '@/components/customresport';
 
 export default function Dashboard() {
   const router = useRouter();
   const [config, setConfig] = useState(null);
   const [layout, setLayout] = useState([]);
-  const [draftLayout, setDraftLayout] = useState(null); // track unsaved layout
+  const [draftLayout, setDraftLayout] = useState(null);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [showMenu, setShowMenu] = useState(false);
   const [showUpdateData, setShowUpdateData] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showConfigReport, setShowConfigReport] = useState(false);
   const [token, setToken] = useState('');
   const [saveLayout, setSaveLayout] = useState(false); // edit mode
   const [save, setSave] = useState(false);
@@ -420,7 +422,14 @@ export default function Dashboard() {
                     >
                       <FaKey size={20} className="mr-2" />Change Password
                     </button>
-
+                    <button
+                      className="px-4 py-2 text-blue-600 text-lg flex justify-center items-center hover:bg-gray-100 w-max"
+                      onClick={() => {
+                        setShowConfigReport(true); setShowMenu((prev) => !prev);
+                      }}
+                    >
+                      Config Report
+                    </button>
                     <button
                       className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
                       onClick={() => {
@@ -487,6 +496,10 @@ export default function Dashboard() {
                 <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
                   onClick={() => { setShowChangePassword(true); setShowSidebar(false); }}>
                   <FaKey size={20} className="mr-2" /> Change Password
+                </button>
+                <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
+                  onClick={() => { setShowConfigReport(true); setShowSidebar(false); }}>
+                  Config Report
                 </button>
                 <button
                   className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"
@@ -584,6 +597,11 @@ export default function Dashboard() {
       {showChangePassword && (
         <ChangePasswordModal
           onClose={() => setShowChangePassword(false)}
+        />
+      )}
+      {showConfigReport && (
+        <ConfigReportModal
+          onClose={() => setShowConfigReport(false)}
         />
       )}
     </>
