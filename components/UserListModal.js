@@ -33,6 +33,8 @@ export default function UserListModal({ users, loading, onClose, onRefresh, onDe
   const handleCreateDashboard = async (userId, userName) => {
     onCreateDashboard();
     if (userName) {
+      localStorage.setItem('db_username',userName);
+      localStorage.setItem('db_userId',userId);
       router.push(`/${userName}/dashboard/${userId}`);
     }
   };

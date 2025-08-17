@@ -2,6 +2,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout } from 'react-icons/fi';
+import { RiFileEditLine } from "react-icons/ri";
 import { FaKey } from "react-icons/fa6";
 import clsx from 'clsx';
 import { BsDatabaseUp } from 'react-icons/bs';
@@ -10,7 +11,7 @@ import WidgetRenderer from '@/components/WidgetRenderer';
 import DataUpdate from '@/components/updateData';
 import ChangePasswordModal from '@/components/changePasswordModal';
 import { toast } from 'react-toastify';
-import ConfigReportModal from '@/components/customresport';
+import ConfigReportModal from '@/components/customreport';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function Dashboard() {
         const res = await fetch('/api/thingsboard/telemetry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, devices, userId }),
+          body: JSON.stringify({ token, devices, userId,key:'dashboardConfig' }),
         });
 
         const result = await res.json();
@@ -428,7 +429,7 @@ export default function Dashboard() {
                         setShowConfigReport(true); setShowMenu((prev) => !prev);
                       }}
                     >
-                      Config Report
+                      <RiFileEditLine size={20} className='mr-2'/>Config Report
                     </button>
                     <button
                       className="flex items-center px-4 py-2 text-lg text-red-600 hover:bg-gray-100 w-full"
@@ -499,7 +500,7 @@ export default function Dashboard() {
                 </button>
                 <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
                   onClick={() => { setShowConfigReport(true); setShowSidebar(false); }}>
-                  Config Report
+                  <RiFileEditLine size={20} className='mr-2'/>Config Report
                 </button>
                 <button
                   className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"

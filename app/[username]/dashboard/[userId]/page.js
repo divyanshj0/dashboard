@@ -1,18 +1,17 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout } from 'react-icons/fi';
+import { FiUser, FiLogOut, FiEdit2, FiMenu, FiX, FiLayout, FiSettings } from 'react-icons/fi';
 import clsx from 'clsx';
-import { BsDatabaseUp } from 'react-icons/bs';
 import CreateDashboardModal from '@/components/CreateDashboardModal';
 import WidgetRenderer from '@/components/WidgetRenderer';
-import DataUpdate from '@/components/updateData';
 import { toast } from 'react-toastify';
-
+import SetupTelemetryModal from '@/components/SetupTelemetryModal';
 
 export default function DashboardPage({ params }) {
-  const { username, userId } = params;
   const router = useRouter();
+  const [name, setName] = useState('');
+  const [userId, setUserId] = useState('');
   const [config, setConfig] = useState(null);
   const [layout, setLayout] = useState([]);
   const [draftLayout, setDraftLayout] = useState(null);
@@ -20,7 +19,7 @@ export default function DashboardPage({ params }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [showUpdateData, setShowUpdateData] = useState(false);
+  const [showSetupTelemetry, setShowSetupTelemetry] = useState(false);
   const [token, setToken] = useState('');
   const [saveLayout, setSaveLayout] = useState(false);
   const [save, setSave] = useState(false);
@@ -48,6 +47,10 @@ export default function DashboardPage({ params }) {
   }, [showMenu]);
 
   useEffect(() => {
+    const name=localStorage.getItem('db_username');
+    const userId=localStorage.getItem('db_userId');
+    setName(name);
+    setUserId(userId);
     const fetchTelemetry = async () => {
       const token = localStorage.getItem('tb_token');
       const devices = JSON.parse(localStorage.getItem('tb_devices'));
@@ -64,7 +67,7 @@ export default function DashboardPage({ params }) {
         const res = await fetch('/api/thingsboard/telemetry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, devices, userId }),
+          body: JSON.stringify({ token, devices, userId,key:'dashboardConfig' }),
         });
 
         if (res.status === 401) {
@@ -90,7 +93,8 @@ export default function DashboardPage({ params }) {
 
   const handleLogout = () => {
     router.push('/admindashboard');
-
+    localStorage.removeItem('db_username');
+    localStorage.removeItem('db_userId');
   };
 
   const handleSaveLayout = async (newLayout) => {
@@ -355,7 +359,7 @@ export default function DashboardPage({ params }) {
                 className="text-md bg-white shadow-md p-2 flex items-center text-black rounded-md cursor-pointer"
                 onClick={() => setShowMenu((prev) => !prev)}
               >
-                <FiUser size={24} className="mr-2" /> {username}
+                <FiUser size={24} className="mr-2" /> {name}
               </div>
               {showMenu && (
                 <div className="absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
@@ -375,7 +379,7 @@ export default function DashboardPage({ params }) {
                         { "opacity-50 cursor-not-allowed": !config || config.widgets.length === 0 }
                       )}
                       onClick={() => {
-                        setDraftLayout(layout); // store current layout for editing
+                        setDraftLayout(layout);
                         setSaveLayout(true);
                         setShowMenu((prev) => !prev);
                       }}
@@ -387,10 +391,11 @@ export default function DashboardPage({ params }) {
                     <button
                       className="px-4 py-2 text-blue-600 text-lg flex items-center hover:bg-gray-100 w-max"
                       onClick={() => {
-                        setShowUpdateData(true); setShowMenu((prev) => !prev);
+                        setShowSetupTelemetry(true); 
+                        setShowMenu((prev) => !prev);
                       }}
                     >
-                      <BsDatabaseUp size={20} className="mr-2" />Data Update
+                      <FiSettings size={20} className="mr-2" />Setup Telemetry
                     </button>
 
                     <button
@@ -400,7 +405,7 @@ export default function DashboardPage({ params }) {
                         setShowMenu((prev) => !prev);
                       }}
                     >
-                      <FiLogOut size={20} className="mr-2" /> Logout
+                      <FiLogOut size={20} className="mr-2" /> AdminDashboard
                     </button>
                   </div>
                 </div>
@@ -420,13 +425,13 @@ export default function DashboardPage({ params }) {
             <div className="w-full bg-lime-100 p-4 flex flex-col gap-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">Menu</h2>
-                <button onClick={() => setShowSidebar(false)}>
+                <button onClick={() => setShowSidebar(false)}>n  
                   <FiX size={24} />
                 </button>
               </div>
               <div className="flex gap-5 items-center">
                 <p className='text-lg font-medium'>Profile</p>
-                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' /> {name}</p>
+                <p className="text-gray-700 font-medium mb-1 flex items-center"> <FiUser size={20} className='mr-2' />{name}</p>
               </div>
               <div className="flex items-center gap-5">
                 <p className='text-lg font-medium'>Status</p>
@@ -456,8 +461,8 @@ export default function DashboardPage({ params }) {
                   <FiLayout size={20} className="mr-2" /> Edit Layout
                 </button>
                 <button className="flex items-center px-2 py-1 text-blue-600 hover:bg-gray-100 rounded w-full"
-                  onClick={() => { setShowUpdateData(true); setShowSidebar(false); }}>
-                  <BsDatabaseUp size={20} className="mr-2" /> Data Update
+                  onClick={() => { setShowSetupTelemetry(true); setShowSidebar(false); }}>
+                  <FiSettings size={20} className="mr-2" /> Setup Telemetry
                 </button>
                 <button
                   className="flex items-center px-2 py-1 text-red-600 hover:bg-gray-100 rounded w-full"
@@ -542,9 +547,12 @@ export default function DashboardPage({ params }) {
         />
       )}
 
-      {showUpdateData && (
-        <DataUpdate
-          onClose={() => setShowUpdateData(false)}
+      {showSetupTelemetry && (
+        <SetupTelemetryModal
+          open={showSetupTelemetry}
+          onClose={() => setShowSetupTelemetry(false)}
+          userId={userId}
+          token={token}
         />
       )}
     </>

@@ -464,7 +464,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       onTouchEnd={handleTouchEnd}
       style={{
         width: '100%',
-        height: '85 %',
+        height: '85%',
         userSelect: 'none',
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
