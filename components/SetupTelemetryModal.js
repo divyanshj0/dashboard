@@ -40,7 +40,8 @@ export default function SetupTelemetryModal({ open, onClose, userId, token }) {
                     body: JSON.stringify({ token, userId,key:'telemetrySetup'}),
                 });
                 const userSetup = await configRes.json();
-                setTelemetrySetup(userSetup);
+                console.log(userSetup||[])
+                setTelemetrySetup(userSetup||[]);
 
             } catch (err) {
                 console.error('Error fetching data for setup:', err);

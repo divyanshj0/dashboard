@@ -17,7 +17,7 @@ export async function POST(req) {
 
     const attrData = await attrRes.json();
     if (key==='telemetrySetup'){
-      return NextResponse.json(attrData.find((a) => a.key === key)?.value);
+      return NextResponse.json(attrData.length ?attrData.find((a) => a.key === key)?.value:null);
     }
     const configJson = typeof attrData === 'object' && attrData.length ? attrData.find((a) => a.key === key)?.value : null;
     const config = typeof configJson === 'string' ? JSON.parse(configJson) : configJson;

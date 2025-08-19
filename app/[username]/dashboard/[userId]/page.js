@@ -425,7 +425,7 @@ export default function DashboardPage({ params }) {
             <div className="w-full bg-lime-100 p-4 flex flex-col gap-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">Menu</h2>
-                <button onClick={() => setShowSidebar(false)}>n  
+                <button onClick={() => setShowSidebar(false)}>
                   <FiX size={24} />
                 </button>
               </div>
