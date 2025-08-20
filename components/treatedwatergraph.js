@@ -3,7 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import { FiMaximize } from 'react-icons/fi';
 import { FaFileDownload } from "react-icons/fa";
 import { createPortal } from 'react-dom';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#6366F1"];
@@ -82,7 +82,7 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function TreatedWaterChart({ title = "", parameters = [], token, unit, saveLayout, onLatestTimestampChange }) {
+export default React.memo(function TreatedWaterChart({ title = "", parameters = [], token, unit, saveLayout, onLatestTimestampChange }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
@@ -246,7 +246,6 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
       name: s.label,
       type: 'line',
       data: data.map(item => [item.ts, item[s.label]]),
-      showSymbol: fullView,
       lineStyle: { width: 3 },
       itemStyle: { color: COLORS[idx % COLORS.length] },
       connectNulls: true,
@@ -276,7 +275,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
         }
       },
       legend: { data: series.map(s => s.label), bottom: 0 },
-      grid: { left: 60, right: 30, top: 40, bottom: 60 },
+      grid: { left: 60, right: 10, top: 20, bottom: 60 },
       xAxis: {
         type: 'time',
         axisLine: { show: true },
@@ -293,9 +292,9 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
       },
       yAxis: {
         type: 'value',
-        name: unit || 'Value',
+        name: unit || '',
         nameLocation: 'middle',
-        nameTextStyle: { fontSize: 14 },
+        nameTextStyle: { fontSize: 16 },
         nameGap: 40,
         axisLine: { show: true },
         splitLine: { show: false }
@@ -311,13 +310,13 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
         ref={containerRef}
         style={{
           width: '100%',
-          height: '85%',
+          height: '100%',
           userSelect: 'none',
         }}
       >
         <ReactECharts
           option={option}
-          style={{ width: '95%', height: '100%' }}
+          style={{ width: '100%', height: '100%' }}
           opts={{ renderer: 'canvas' }}
           notMerge={true}
           lazyUpdate={true}
@@ -327,7 +326,7 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
   };
 
   return (
-    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4">
+    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4 flex flex-col">
       {/* Header + selector */}
       <div className="flex items-center justify-between">
         <p className="text-xl font-semibold">{title}</p>
@@ -406,29 +405,38 @@ export default function TreatedWaterChart({ title = "", parameters = [], token, 
           </div>
         </div>
       )}
-      {loading ? (
-        <div className="h-56 flex items-center justify-center">
-          <p>Loading data...</p>
-        </div>
-      ) : view === 'custom' && !isCustomRangeApplied ? (
-        <div className="h-56 flex items-center justify-center text-red-500">
-          <p>Please select both start and end dates for a custom range.</p>
-        </div>
-      ) : (
-        <Chart data={chartData} fullView={false} />
-      )}
+      <div className="flex-grow">
+        {loading ? (
+          <div className="h-56 flex items-center justify-center">
+            <p>Loading data...</p>
+          </div>
+        ) : view === 'custom' && !isCustomRangeApplied ? (
+          <div className="h-full flex items-center justify-center text-red-500">
+            <p>Please select both start and end dates for a custom range.</p>
+          </div>
+        ) : (
+          <Chart data={chartData} fullView={false} />
+        )}
+      </div>
       {isOpen && createPortal(
         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center px-2">
-          <div className="bg-white p-4 rounded-lg w-full max-w-[90vw] h-[90vh] overflow-auto shadow-lg">
+          <div className="bg-white p-4 rounded-lg w-full max-w-[90vw] h-[90vh] overflow-auto shadow-lg flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">{title}</h2>
               <button onClick={() => setIsOpen(false)} className="text-lg">✕</button>
             </div>
-            <Chart data={chartData} fullView={true} />
+            {view === 'custom' && isCustomRangeApplied && displayedStartDate && displayedEndDate && (
+              <p className="mt-2 text-md text-gray-500">
+                History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
+              </p>
+            )}
+            <div className="flex-grow">
+              <Chart data={chartData} fullView={true} />
+            </div>
           </div>
         </div>,
         document.body
       )}
     </div>
   );
-}
+})

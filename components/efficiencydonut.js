@@ -95,10 +95,9 @@ const Efficiency = ({ parameters = [], token, label = "" ,onLatestTimestampChang
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: {
-          valueAnimation: true,
           formatter: '{value}%',
           color: '#333',
-          fontSize: 24,
+          fontSize: 16,
           offsetCenter: [0, 0],
         },
         data: [{ value: displayValue }]

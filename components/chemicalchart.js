@@ -2,7 +2,7 @@
 import ReactECharts from 'echarts-for-react';
 import { FiMaximize } from 'react-icons/fi';
 import { FaFileDownload } from "react-icons/fa";
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
@@ -64,7 +64,7 @@ function downloadCSV(data, title, view) {
   document.body.removeChild(link);
 }
 
-export default function ChemicalChart({ title = "", parameters = [], token, saveLayout, unit, onLatestTimestampChange }) {
+export default React.memo(function ChemicalChart({ title = "", parameters = [], token, saveLayout, unit, onLatestTimestampChange }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
@@ -283,8 +283,8 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       grid: {
         top: 20,
         left: 60,
-        right: 30,
-        bottom: 40
+        right: 10,
+        bottom: 50
       },
       xAxis: {
         type: 'category',
@@ -294,10 +294,10 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
       },
       yAxis: {
         type: 'value',
-        name: unit || 'Value',
+        name: unit || '',
         nameLocation: 'middle',
-        nameGap: 30,
-        nameTextStyle: { fontSize: 18 },
+        nameGap: 40,
+        nameTextStyle: { fontSize: 16 },
         position: 'left',
         axisLine: { show: true },
         splitLine: { show: false }
@@ -309,10 +309,10 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     };
 
     return (
-      <div style={{ width: '100%', height: '85%' }}>
+      <div style={{ width: '100%', height: '100%' }}>
         <ReactECharts
           option={option}
-          style={{ width: '95%', height: '100%' }}
+          style={{ width: '100%', height: '100%' }}
           opts={{ renderer: 'canvas' }}
           notMerge={true}
           lazyUpdate={true}
@@ -323,7 +323,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   };
 
   return (
-    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4">
+    <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4 flex flex-col">
       {/* Header + selector */}
       <div className="flex items-center justify-between">
         <p className="text-xl font-semibold">{title}</p>
@@ -406,31 +406,38 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           </div>
         </div>
       )}
-
-      {loading ? (
-        <div className="h-full flex items-center justify-center">
-          <p>Loading data...</p>
-        </div>
-      ) : view === 'custom' && !isCustomRangeApplied ? (
-        <div className="h-full flex items-center justify-center text-gray-500">
-          <p>Please select a time range and click "Go".</p>
-        </div>
-      ) : (
-        <Chart data={chartData} fullView={false} />
-      )}
-
+      <div className="flex-grow">
+        {loading ? (
+          <div className="h-full flex items-center justify-center">
+            <p>Loading data...</p>
+          </div>
+        ) : view === 'custom' && !isCustomRangeApplied ? (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            <p>Please select a time range and click "Go".</p>
+          </div>
+        ) : (
+          <Chart data={chartData} fullView={false} />
+        )}
+      </div>
       {isOpen && createPortal(
         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center px-2">
-          <div className="bg-white p-4 rounded-lg w-full max-w-[90vw] h-[90vh] overflow-auto shadow-lg">
+          <div className="bg-white p-4 rounded-lg w-full max-w-[90vw] h-[90vh] overflow-auto shadow-lg flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">{title}</h2>
               <button onClick={() => setIsOpen(false)} className="text-lg">✕</button>
             </div>
-            <Chart data={chartData} fullView={true} />
+            {view === 'custom' && isCustomRangeApplied && displayedStartDate && displayedEndDate && (
+              <p className="mt-2 text-md text-gray-500">
+                History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
+              </p>
+            )}
+            <div className="flex-grow">
+              <Chart data={chartData} fullView={true} />
+            </div>
           </div>
         </div>,
         document.body
       )}
     </div>
   );
-}
+})
