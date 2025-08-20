@@ -1,8 +1,8 @@
 'use client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Label, Rectangle } from 'recharts';
+import ReactECharts from 'echarts-for-react';
 import { FiMaximize } from 'react-icons/fi';
 import { FaFileDownload } from "react-icons/fa";
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
@@ -65,7 +65,7 @@ function downloadCSV(data, title, view) {
 }
 
 export default function ChemicalChart({ title = "", parameters = [], token, saveLayout, unit, onLatestTimestampChange }) {
-  const router = useRouter()
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('hourly');
   const [timeSeries, setTimeSeries] = useState({});
@@ -77,29 +77,9 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
   const [displayedStartDate, setDisplayedStartDate] = useState('');
   const [displayedEndDate, setDisplayedEndDate] = useState('');
 
-
-  // zoom / pan state
-  const [fullData, setFullData] = useState([]); // complete transformed series
-  const [visibleData, setVisibleData] = useState([]); // currently displayed slice
-  const [zoomWindow, setZoomWindow] = useState({ startIdx: 0, endIdx: -1 }); // indices into fullData
-
-  // refs for panning + preview
   const containerRef = useRef(null);
-  const isPanningRef = useRef(false);
-  const panStartX = useRef(0);
-  const panStartWindow = useRef({ startIdx: 0, endIdx: -1 });
-  const panPreviewRef = useRef({ startIdx: 0, endIdx: -1 }); // preview while dragging
 
-  // small state just to toggle cursor during drag (only toggles at start/end)
-  const [isDragging, setIsDragging] = useState(false);
-
-  // New refs for touch state
-  const isTouchingRef = useRef(false);
-  const touchStartX = useRef(0);
-  const touchStartDist = useRef(0);
-  const touchStartWindow = useRef({ startIdx: 0, endIdx: -1 });
-  const touchPreviewRef = useRef({ startIdx: 0, endIdx: -1 });
-
+  // Fetch time series data as before
   const fetchTimeSeriesData = async () => {
     setLoading(true);
     const result = {};
@@ -191,219 +171,8 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     unit: unit || '',
   }));
 
-  // When timeSeries (and therefore series) changes, regenerate transformed fullData and reset zoom window
-  const transformed = transformSeries(series);
-  useEffect(() => {
-    setFullData(transformed);
-    setVisibleData(transformed);
-    if (transformed.length > 0) {
-      setZoomWindow({ startIdx: 0, endIdx: transformed.length - 1 });
-      panPreviewRef.current = { startIdx: 0, endIdx: transformed.length - 1 };
-    } else {
-      setZoomWindow({ startIdx: 0, endIdx: -1 });
-      panPreviewRef.current = { startIdx: 0, endIdx: -1 };
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(series)]); // deep watch series changes
-
-  // Helper clamp
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-  // Reset zoom to full range
-  const resetZoom = () => {
-    setVisibleData(fullData);
-    if (fullData.length > 0) {
-      setZoomWindow({ startIdx: 0, endIdx: fullData.length - 1 });
-      panPreviewRef.current = { startIdx: 0, endIdx: fullData.length - 1 };
-    } else {
-      setZoomWindow({ startIdx: 0, endIdx: -1 });
-      panPreviewRef.current = { startIdx: 0, endIdx: -1 };
-    }
-  };
-
-  // Panning handlers (click + drag) — preview only during drag; apply on mouseup
-  const handleMouseDown = (e) => {
-    if (!fullData || fullData.length === 0) return;
-    isPanningRef.current = true;
-    panStartX.current = e.clientX;
-    panStartWindow.current = { ...zoomWindow };
-    panPreviewRef.current = { ...zoomWindow };
-    setIsDragging(true);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isPanningRef.current || !fullData || fullData.length === 0) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const dx = e.clientX - panStartX.current;
-    const width = rect.width || 1;
-    const { startIdx, endIdx } = panStartWindow.current;
-    const rangeLen = endIdx - startIdx + 1;
-
-    const shift = Math.round((-dx / width) * rangeLen);
-    const fullLen = fullData.length;
-    let newStart = panStartWindow.current.startIdx + shift;
-    newStart = clamp(newStart, 0, Math.max(0, fullLen - rangeLen));
-    let newEnd = newStart + rangeLen - 1;
-
-    panPreviewRef.current = { startIdx: newStart, endIdx: newEnd };
-    // We intentionally avoid setVisibleData here to prevent frequent re-renders during mousemove
-  };
-
-  const finalizePan = () => {
-    if (!isPanningRef.current) return;
-    isPanningRef.current = false;
-    setIsDragging(false);
-    const { startIdx, endIdx } = panPreviewRef.current;
-    setZoomWindow({ startIdx, endIdx });
-    setVisibleData(fullData.slice(startIdx, endIdx + 1));
-  };
-
-  const handleMouseUp = () => {
-    finalizePan();
-  };
-
-  useEffect(() => {
-    const handleUp = () => finalizePan();
-    window.addEventListener('mouseup', handleUp);
-    return () => window.removeEventListener('mouseup', handleUp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullData]);
-
-  // Touch handlers
-  const getTouchDistance = (e) => {
-    if (e.touches.length < 2) return null;
-    const touch1 = e.touches[0];
-    const touch2 = e.touches[1];
-    return Math.sqrt(
-      Math.pow(touch2.clientX - touch1.clientX, 2) +
-      Math.pow(touch2.clientY - touch1.clientY, 2)
-    );
-  };
-
-  const handleTouchStart = (e) => {
-    if (!fullData || fullData.length === 0) return;
-    e.preventDefault();
-    isTouchingRef.current = true;
-    touchStartWindow.current = { ...zoomWindow };
-    touchPreviewRef.current = { ...zoomWindow };
-
-    if (e.touches.length === 1) {
-      touchStartX.current = e.touches[0].clientX;
-    } else if (e.touches.length === 2) {
-      touchStartDist.current = getTouchDistance(e);
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isTouchingRef.current || !fullData || fullData.length === 0) return;
-    e.preventDefault();
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const fullLen = fullData.length;
-
-    if (e.touches.length === 1) {
-      // Panning logic
-      const dx = e.touches[0].clientX - touchStartX.current;
-      const width = rect.width || 1;
-      const { startIdx, endIdx } = touchStartWindow.current;
-      const rangeLen = endIdx - startIdx + 1;
-      const shift = Math.round((-dx / width) * rangeLen);
-
-      let newStart = touchStartWindow.current.startIdx + shift;
-      newStart = clamp(newStart, 0, Math.max(0, fullLen - rangeLen));
-      let newEnd = newStart + rangeLen - 1;
-
-      touchPreviewRef.current = { startIdx: newStart, endIdx: newEnd };
-      setVisibleData(fullData.slice(newStart, newEnd + 1));
-    } else if (e.touches.length === 2) {
-      // Pinch-to-zoom logic
-      const currentDist = getTouchDistance(e);
-      if (currentDist === null || touchStartDist.current === 0) return;
-      const zoomFactor = touchStartDist.current / currentDist;
-
-      const { startIdx, endIdx } = touchStartWindow.current;
-      const rangeLen = endIdx - startIdx + 1;
-
-      let newRange = Math.max(2, Math.round(rangeLen * zoomFactor));
-      newRange = clamp(newRange, 2, fullLen);
-
-      const touch1 = e.touches[0];
-      const offsetX = clamp(touch1.clientX - rect.left, 0, rect.width);
-      const mouseRatio = offsetX / rect.width;
-      const targetIndex = startIdx + Math.floor(mouseRatio * (rangeLen - 1));
-
-      let newStart = Math.round(targetIndex - mouseRatio * (newRange - 1));
-      newStart = clamp(newStart, 0, fullLen - newRange);
-      let newEnd = newStart + newRange - 1;
-
-      touchPreviewRef.current = { startIdx: newStart, endIdx: newEnd };
-      setVisibleData(fullData.slice(newStart, newEnd + 1));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (!isTouchingRef.current) return;
-    isTouchingRef.current = false;
-    const { startIdx, endIdx } = touchPreviewRef.current;
-    setZoomWindow({ startIdx, endIdx });
-  };
-
-  // Non-passive mouse wheel event listener
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      e.preventDefault();
-      if (!fullData || fullData.length === 0) return;
-
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const clientX = e.clientX ?? (e.nativeEvent && e.nativeEvent.clientX);
-      const offsetX = clamp(clientX - rect.left, 0, rect.width);
-      const width = rect.width || 1;
-
-      const { startIdx, endIdx } = zoomWindow;
-      const fullLen = fullData.length;
-      if (startIdx > endIdx || fullLen === 0) return;
-
-      const rangeLen = endIdx - startIdx + 1;
-      const mouseRatio = offsetX / width;
-      const targetIndex = startIdx + Math.floor(mouseRatio * (rangeLen - 1));
-
-      const zoomIn = e.deltaY < 0;
-      const zoomFactor = zoomIn ? 0.75 : 1.25;
-      let newRange = Math.max(2, Math.round(rangeLen * zoomFactor));
-
-      newRange = clamp(newRange, 2, fullLen);
-
-      let newStart = Math.round(targetIndex - mouseRatio * (newRange - 1));
-      newStart = clamp(newStart, 0, fullLen - newRange);
-      let newEnd = newStart + newRange - 1;
-
-      setZoomWindow({ startIdx: newStart, endIdx: newEnd });
-      setVisibleData(fullData.slice(newStart, newEnd + 1));
-      panPreviewRef.current = { startIdx: newStart, endIdx: newEnd };
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-    };
-  }, [fullData, zoomWindow, setVisibleData, setZoomWindow, clamp]);
-
-
-  // Keep visibleData synced when zoomWindow changes
-  useEffect(() => {
-    const { startIdx, endIdx } = zoomWindow;
-    if (!fullData || fullData.length === 0) return;
-    if (startIdx <= endIdx && startIdx >= 0 && endIdx < fullData.length) {
-      setVisibleData(fullData.slice(startIdx, endIdx + 1));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(zoomWindow), fullData]);
+  // Transform series for chart
+  const chartData = transformSeries(series);
 
   const handleViewChange = (newView) => {
     setView(newView);
@@ -434,9 +203,9 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleString('en-GB', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1');
   };
 
@@ -451,63 +220,107 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Chart renderer (uses visibleData)
-  const Chart = ({ data, fullView, view }) => (
-    <div
-      ref={containerRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{
-        width: '100%',
-        height: '85%',
-        userSelect: 'none',
-        cursor: isDragging ? 'grabbing' : 'grab',
-      }}
 
-    >
-      <ResponsiveContainer width="95%" height="100%">
-        <BarChart data={data}>
-          <XAxis
-            dataKey="ts"
-            tickFormatter={(ts) => {
-              const date = new Date(ts);
-              return date.toLocaleString('en-GB', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-              });
-            }}
-          />
-          <YAxis>
-            <Label value={unit || 'Value'} angle={-90} offset={15} fontSize={20} position="insideLeft" />
-          </YAxis>
-          <Tooltip
-            labelFormatter={(ts) => new Date(ts).toLocaleString()}
-            cursor={false}
-          />
-          <Legend />
-          {series.map((s, idx) => (
-            <Bar
-              key={s.label}
-              dataKey={s.label}
-              fill={COLORS[idx % COLORS.length]}
-              fillOpacity={0.8}
-              activeBar={<Rectangle fill={COLORS[idx % COLORS.length]} fillOpacity={1} />}
-              radius={8}
-              isAnimationActive={false}
-            />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  // --- Chart rendering with ECharts ---
+  const Chart = ({ data, fullView }) => {
+    const xAxisLabels = data.map(item => {
+      const date = new Date(item.ts);
+      return date.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    });
+
+    // Build a map from label string to index so series data can link to category axis
+    const labelToIndex = {};
+    xAxisLabels.forEach((label, idx) => {
+      labelToIndex[label] = idx;
+    });
+
+    // Transform series data to be array of [categoryIndex, value]
+    const echartSeries = series.map((s, idx) => ({
+      name: s.label,
+      type: 'bar', // or 'line' depending on your chart
+      data: data.map(item => {
+        const label = new Date(item.ts).toLocaleString('en-GB', {
+          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        return [labelToIndex[label], item[s.label]];
+      }),
+      barMaxWidth: 28,
+      itemStyle: { color: COLORS[idx % COLORS.length] }
+    }));
+
+
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: function (params) {
+          if (!params.length) return '';
+          const ts = params[0].data[0];
+          const date = new Date(ts);
+          let str = date.toLocaleString('en-GB', {
+            year: '2-digit', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false,
+          }) + '<br />';
+          params.forEach(p => {
+            str += `<span style="display:inline-block;width:8px;height:8px;margin-right:5px;background:${p.color};border-radius:1px"></span> ${p.seriesName}: ${p.data[1] ?? '-'}<br/>`;
+          });
+          return str;
+        }
+      },
+      legend: {
+        data: series.map(s => s.label),
+        bottom: 0,
+        left: 'center',
+        orient: 'horizontal'
+      },
+      grid: {
+        top: 20,
+        left: 60,
+        right: 30,
+        bottom: 40
+      },
+      xAxis: {
+        type: 'category',
+        data: xAxisLabels,
+        axisLine: { show: true },
+        axisTick: { show: true }
+      },
+      yAxis: {
+        type: 'value',
+        name: unit || 'Value',
+        nameLocation: 'middle',
+        nameGap: 30,
+        nameTextStyle: { fontSize: 18 },
+        position: 'left',
+        axisLine: { show: true },
+        splitLine: { show: false }
+      },
+      dataZoom: [
+        { type: 'inside', xAxisIndex: 0 }
+      ],
+      series: echartSeries
+    };
+
+    return (
+      <div style={{ width: '100%', height: '85%' }}>
+        <ReactECharts
+          option={option}
+          style={{ width: '95%', height: '100%' }}
+          opts={{ renderer: 'canvas' }}
+          notMerge={true}
+          lazyUpdate={true}
+          ref={containerRef}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white h-full w-full border border-gray-200 rounded-md shadow-sm p-4">
@@ -538,8 +351,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
               C
             </button>
           </div>
-          <button onClick={resetZoom} className="border px-2 py-1 rounded">Reset Zoom</button>
-          <button onClick={() => downloadCSV(fullData, title, view)} title="Download DataFile" className="cursor-pointer">
+          <button onClick={() => downloadCSV(chartData, title, view)} title="Download DataFile" className="cursor-pointer">
             <FaFileDownload size={20} />
           </button>
           <button onClick={() => setIsOpen(true)} title="fullscreen" className="cursor-pointer">
@@ -547,12 +359,14 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           </button>
         </div>
       </div>
+
       {/* History Line */}
       {view === 'custom' && isCustomRangeApplied && displayedStartDate && displayedEndDate && (
-          <p className="mt-2 text-md text-gray-500">
-            History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
-          </p>
+        <p className="mt-2 text-md text-gray-500">
+          History - from {formatTimestamp(displayedStartDate)} to {formatTimestamp(displayedEndDate)}
+        </p>
       )}
+
       {/* Date inputs card */}
       {showCustomInputs && (
         <div className="w-full h-[100px] my-2 max-w-4xl bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm">
@@ -592,6 +406,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           </div>
         </div>
       )}
+
       {loading ? (
         <div className="h-full flex items-center justify-center">
           <p>Loading data...</p>
@@ -601,7 +416,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
           <p>Please select a time range and click "Go".</p>
         </div>
       ) : (
-        <Chart data={visibleData} fullView={false} view={view} />
+        <Chart data={chartData} fullView={false} />
       )}
 
       {isOpen && createPortal(
@@ -611,7 +426,7 @@ export default function ChemicalChart({ title = "", parameters = [], token, save
               <h2 className="text-xl font-semibold">{title}</h2>
               <button onClick={() => setIsOpen(false)} className="text-lg">✕</button>
             </div>
-            <Chart data={visibleData} fullView={true} />
+            <Chart data={chartData} fullView={true} />
           </div>
         </div>,
         document.body
