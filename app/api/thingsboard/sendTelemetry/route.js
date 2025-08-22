@@ -1,7 +1,7 @@
 // /app/api/sendTelemetry/route.js
 import { NextResponse } from 'next/server';
 
-const TB_BASE_URL =process.env.NEXT_PUBLIC_TB_URL;
+const TB_BASE_URL = process.env.NEXT_PUBLIC_TB_URL;
 
 export async function POST(req) {
   const { token, deviceId, telemetryData } = await req.json();
@@ -9,13 +9,18 @@ export async function POST(req) {
   if (!token || !deviceId || !telemetryData || typeof telemetryData !== 'object' || Object.keys(telemetryData).length === 0) {
     return NextResponse.json({ error: 'Missing required data: token, deviceId, or telemetryData' }, { status: 400 });
   }
+  const credRes = await fetch(`${TB_BASE_URL}/api/device/${deviceId}/credentials`, {
+    headers: { 'X-Authorization': `Bearer ${token}` },
+  });
+
+  const credentials = await credRes.json();
+  const DEVICE_ACCESS_TOKEN = credentials.credentialsId;
 
   try {
-    const res = await fetch(`${TB_BASE_URL}/api/plugins/telemetry/DEVICE/${deviceId}/timeseries/ANY`, {
+    const res = await fetch(`${TB_BASE_URL}/api/v1/${DEVICE_ACCESS_TOKEN}/telemetry`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(telemetryData),
     });

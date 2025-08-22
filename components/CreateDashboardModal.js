@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], userAuthority }) {
+export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], existingThresholds = {}, userAuthority }) {
   const router=useRouter()
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
@@ -21,12 +21,36 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
   useEffect(() => {
     if (open) {
-      setWidgets(existingWidgets.map(w => ({
+      // Deep copy widgets to avoid direct mutation
+      const initialWidgets = existingWidgets.map(w => ({
         ...w,
         parameters: w.parameters ? w.parameters.map(p => ({ ...p })) : []
-      })));
-    }
+      }));
 
+      // Merge existing thresholds into widget parameters
+      const widgetsWithThresholds = initialWidgets.map(widget => {
+        if (!widget.parameters) return widget;
+
+        const updatedParameters = widget.parameters.map(param => {
+          const thresholdsForDevice = existingThresholds[param.deviceId];
+          const thresholdForKey = thresholdsForDevice?.[param.key];
+          
+          if (thresholdForKey) {
+            return {
+              ...param,
+              min: thresholdForKey.min !== null ? thresholdForKey.min : '',
+              max: thresholdForKey.max !== null ? thresholdForKey.max : '',
+            };
+          }
+          return param;
+        });
+
+        return { ...widget, parameters: updatedParameters };
+      });
+      
+      setWidgets(widgetsWithThresholds);
+    }
+    
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         onClose();
@@ -34,7 +58,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, existingWidgets, onClose]);
+  }, [open, existingWidgets, onClose, existingThresholds]);
 
   useEffect(() => {
     const tbDevices = JSON.parse(localStorage.getItem('tb_devices') || '[]');
@@ -267,11 +291,29 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         )
       })));
     } else {
-      setWidgets(w => w.map((x, idx) => {
-        if (idx !== wIdx) return x;
-        const params = x.parameters.map((p, pi) => pi === pIdx ? { ...p, [field]: val } : p);
-        return { ...x, parameters: params };
-      }));
+        setWidgets(w => w.map((x, idx) => {
+            if (idx !== wIdx) return x;
+            const params = x.parameters.map((p, pi) => {
+                if (pi === pIdx) {
+                    const updatedParam = { ...p, [field]: val };
+
+                    if (field === 'key' || field === 'deviceId') {
+                        const thresholdsForDevice = existingThresholds[updatedParam.deviceId];
+                        const thresholdForKey = thresholdsForDevice?.[updatedParam.key];
+                        if (thresholdForKey) {
+                            updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
+                            updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
+                        } else {
+                            updatedParam.min = '';
+                            updatedParam.max = '';
+                        }
+                    }
+                    return updatedParam;
+                }
+                return p;
+            });
+            return { ...x, parameters: params };
+        }));
     }
   };
 
@@ -327,21 +369,84 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       if (wIdx !== widgetIndex) return widget;
       const updatedParams = widget.parameters.map((param, pIdx) => {
         if (pIdx === paramIndex) {
-          // Keep the existing keys, just update deviceId and name
-          return {
-            ...param,
-            deviceId: deviceId,
-            name: selectedDevice ? selectedDevice.name : '',
-            keys: []
-          };
+            const updatedParam = {
+                ...param,
+                deviceId: deviceId,
+                name: selectedDevice ? selectedDevice.name : '',
+                keys: []
+            };
+
+            const thresholdsForDevice = existingThresholds[deviceId];
+            if (thresholdsForDevice?.[updatedParam.key]) {
+                const thresholdForKey = thresholdsForDevice[updatedParam.key];
+                updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
+                updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
+            } else {
+                updatedParam.min = '';
+                updatedParam.max = '';
+            }
+            return updatedParam;
         }
         return param;
       });
       return { ...widget, parameters: updatedParams };
     }));
   };
-  
-  const handleNext = () => onNext(widgets);
+
+  const handleNext = async () => {
+    onNext(widgets);
+    const token = localStorage.getItem('tb_token');
+    if (!token) {
+        console.error('Authentication token not found.');
+        return;
+    }
+    const deviceThresholds = {};
+    widgets.forEach(widget => {
+        if (widget.type === 'image' || widget.type === 'map' || widget.type === 'table') {
+            return;
+        }
+        widget.parameters.forEach(param => {
+            if (param.min !== '' || param.max !== '') {
+                if (!deviceThresholds[param.deviceId]) {
+                    deviceThresholds[param.deviceId] = {};
+                }
+                deviceThresholds[param.deviceId][param.key] = {
+                    min: param.min !== '' ? Number(param.min) : null,
+                    max: param.max !== '' ? Number(param.max) : null,
+                };
+            }
+        });
+    });
+
+    for (const deviceId in deviceThresholds) {
+        if (Object.keys(deviceThresholds[deviceId]).length > 0) {
+            try {
+                const res = await fetch('/api/thingsboard/saveThresholds', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token,
+                        deviceId: deviceId,
+                        thresholds: deviceThresholds[deviceId],
+                    }),
+                });
+                if (res.status === 401) {
+                  localStorage.clear();
+                  toast.error('Session expired. Please log in again.');
+                  router.push('/');
+                  return;
+                }
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    toast.error(`Failed to save thresholds for device ${deviceId}: ${errorData.error || res.statusText}`);
+                }
+            } catch (err) {
+                console.error(`Error saving thresholds for device ${deviceId}:`, err);
+                toast.error(`Error saving thresholds for device ${deviceId}.`);
+            }
+        }
+    }
+  };
 
   const formValid = widgets.length > 0 && widgets.every(w => {
     if (w.name.trim() === '') return false;

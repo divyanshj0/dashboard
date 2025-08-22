@@ -25,6 +25,7 @@ export default function DashboardPage({ params }) {
   const [save, setSave] = useState(false);
   const [latestTelemetryTime, setLatestTelemetryTime] = useState(null);
   const [userAuthority, setUserAuthority] = useState(''); // New state for user authority
+  const [deviceThresholds, setDeviceThresholds] = useState({});
   const status = 'Normal';
   const menuRef = useRef(null);
 
@@ -46,49 +47,84 @@ export default function DashboardPage({ params }) {
     };
   }, [showMenu]);
 
-  useEffect(() => {
-    const name=localStorage.getItem('db_username');
-    const userId=localStorage.getItem('db_userId');
+  const fetchDashboardData = async () => {
+    const name = localStorage.getItem('db_username');
+    const userId = localStorage.getItem('db_userId');
+    const token = localStorage.getItem('tb_token');
+    const devices = JSON.parse(localStorage.getItem('tb_devices'));
+    const authority = localStorage.getItem('userAuthority');
+    setToken(token);
+    setUserAuthority(authority);
     setName(name);
     setUserId(userId);
-    const fetchTelemetry = async () => {
-      const token = localStorage.getItem('tb_token');
-      const devices = JSON.parse(localStorage.getItem('tb_devices'));
-      const authority = localStorage.getItem('userAuthority');
-      setToken(token);
-      setUserAuthority(authority);
 
-      if (!token) {
+    if (!token) {
+      router.push('/');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const configRes = await fetch('/api/thingsboard/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, devices, userId, key: 'dashboardConfig' }),
+      });
+
+      if (configRes.status === 401) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
         router.push('/');
         return;
       }
+      const configResult = await configRes.json();
+      const dashboardConfig = configResult.config || { widgets: [], layout: [] };
+      setConfig(dashboardConfig);
+      setLayout(dashboardConfig.layout);
 
-      try {
-        const res = await fetch('/api/thingsboard/telemetry', {
+      const deviceIds = new Set();
+      dashboardConfig.widgets.forEach(widget => {
+        if (widget.parameters) {
+          widget.parameters.forEach(param => {
+            if (param.deviceId) {
+              deviceIds.add(param.deviceId);
+            }
+          });
+        }
+      });
+
+      const thresholdsData = {};
+      const fetchThresholdsPromises = Array.from(deviceIds).map(async (id) => {
+        const thresholdsRes = await fetch('/api/thingsboard/getDeviceAttributes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, devices, userId,key:'dashboardConfig' }),
+          body: JSON.stringify({ token: token, deviceId: id, keys: 'thresholds' }),
         });
-
-        if (res.status === 401) {
-          // Token is unauthorized or expired.
-          // Clear localStorage and redirect to login.
-          localStorage.clear();
-          toast.error('Session expired. Please log in again.');
-          router.push('/');
-          return; // Stop further execution
+        if (thresholdsRes.ok) {
+          const data = await thresholdsRes.json();
+          const thresholdAttribute = data.find(attr => attr.key === 'thresholds');
+          if (thresholdAttribute?.value) {
+            thresholdsData[id] = typeof thresholdAttribute.value === 'string'
+              ? JSON.parse(thresholdAttribute.value)
+              : thresholdAttribute.value;
+          }
+        } else {
+          console.warn(`Failed to fetch thresholds for device ${id}`);
         }
-        const result = await res.json();
-        setConfig(result.config || null);
-        setLayout(result.layout || []);
-      } catch (err) {
-        console.error('Telemetry/config fetch failed', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
 
-    fetchTelemetry();
+      await Promise.all(fetchThresholdsPromises);
+      setDeviceThresholds(thresholdsData);
+
+    } catch (err) {
+      console.error('Telemetry/config fetch failed', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
 
   const handleLogout = () => {
@@ -108,7 +144,7 @@ export default function DashboardPage({ params }) {
       const res = await fetch('/api/thingsboard/saveDashboardConfig', {
         method: 'POST',
         body: JSON.stringify({
-          token,
+          token: token,
           userId,
           config: updatedConfig,
         }),
@@ -234,7 +270,7 @@ export default function DashboardPage({ params }) {
       const res = await fetch('/api/thingsboard/saveDashboardConfig', {
         method: 'POST',
         body: JSON.stringify({
-          token,
+          token: token,
           userId,
           config: updatedConfig,
         }),
@@ -262,6 +298,7 @@ export default function DashboardPage({ params }) {
       toast.error('Error updating dashboard configuration.');
     } finally {
       setShowCreateModal(false);
+      fetchDashboardData();
     }
   };
   const handleGeoFenceChange = async (newGeofence, widgetId) => {
@@ -499,6 +536,7 @@ export default function DashboardPage({ params }) {
               token={token}
               onLatestTimestampChange={setLatestTelemetryTime}
               onGeofenceChange={handleGeoFenceChange}
+              deviceThresholds={deviceThresholds}
             />
             <div className={`justify-end gap-2 ${saveLayout ? "flex" : "hidden"}`}>
               <button
@@ -540,6 +578,7 @@ export default function DashboardPage({ params }) {
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           existingWidgets={config?.widgets || []}
+          existingThresholds={deviceThresholds}
           onNext={(widgets) => {
             handleSaveConfig(widgets);
           }}
