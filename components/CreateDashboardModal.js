@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { FiPlus, FiTrash2, FiX, FiUploadCloud } from 'react-icons/fi';
+import { FaRegImage } from "react-icons/fa6";
 import { v4 as uuidv4 } from 'uuid';
 import DeletePopup from './deletepopup';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
+import ShowPreviewModal from './ImagePreviewModal';
 export default function CreateDashboardModal({ open, onClose, onNext, existingWidgets = [], existingThresholds = {}, userAuthority }) {
-  const router=useRouter()
+  const router = useRouter()
   const [devices, setDevices] = useState([]);
   const [widgets, setWidgets] = useState([]);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
@@ -17,6 +19,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   const [newImageFile, setNewImageFile] = useState(null);
   const [newImageTitle, setNewImageTitle] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewImageLink, setPreviewImageLink] = useState('');
+  const [previewImageTitle, setPreviewImageTitle] = useState('');
   const Tb_Url = process.env.NEXT_PUBLIC_TB_URL;
 
   useEffect(() => {
@@ -34,7 +39,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         const updatedParameters = widget.parameters.map(param => {
           const thresholdsForDevice = existingThresholds[param.deviceId];
           const thresholdForKey = thresholdsForDevice?.[param.key];
-          
+
           if (thresholdForKey) {
             return {
               ...param,
@@ -47,10 +52,10 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
 
         return { ...widget, parameters: updatedParameters };
       });
-      
+
       setWidgets(widgetsWithThresholds);
     }
-    
+
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         onClose();
@@ -188,7 +193,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
   };
 
   const handleImageUpload = async (widgetId) => {
-    if (!newImageFile || !newImageTitle.trim()) {
+    if (!newImageFile) {
       toast.warn('Please select an image file and provide a title.');
       return;
     }
@@ -219,7 +224,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         return;
       }
       if (!res.ok) {
-        throw new Error('Image upload failed.');
+        toast.error('Image upload failed');
+        setUploadingImage(false);
+        return;
       }
 
       const uploadedImageInfo = await res.json();
@@ -291,29 +298,29 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         )
       })));
     } else {
-        setWidgets(w => w.map((x, idx) => {
-            if (idx !== wIdx) return x;
-            const params = x.parameters.map((p, pi) => {
-                if (pi === pIdx) {
-                    const updatedParam = { ...p, [field]: val };
+      setWidgets(w => w.map((x, idx) => {
+        if (idx !== wIdx) return x;
+        const params = x.parameters.map((p, pi) => {
+          if (pi === pIdx) {
+            const updatedParam = { ...p, [field]: val };
 
-                    if (field === 'key' || field === 'deviceId') {
-                        const thresholdsForDevice = existingThresholds[updatedParam.deviceId];
-                        const thresholdForKey = thresholdsForDevice?.[updatedParam.key];
-                        if (thresholdForKey) {
-                            updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
-                            updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
-                        } else {
-                            updatedParam.min = '';
-                            updatedParam.max = '';
-                        }
-                    }
-                    return updatedParam;
-                }
-                return p;
-            });
-            return { ...x, parameters: params };
-        }));
+            if (field === 'key' || field === 'deviceId') {
+              const thresholdsForDevice = existingThresholds[updatedParam.deviceId];
+              const thresholdForKey = thresholdsForDevice?.[updatedParam.key];
+              if (thresholdForKey) {
+                updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
+                updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
+              } else {
+                updatedParam.min = '';
+                updatedParam.max = '';
+              }
+            }
+            return updatedParam;
+          }
+          return p;
+        });
+        return { ...x, parameters: params };
+      }));
     }
   };
 
@@ -340,7 +347,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     updatedWidgets[widgetIndex] = { ...widgetToUpdate, parameters: newAllDeviceParams };
     setWidgets(updatedWidgets);
   };
-  
+
   const handleTableUnitChange = (widgetIndex, paramIndex, key, unitValue) => {
     setWidgets(widgets => widgets.map((widget, wIdx) => {
       if (wIdx !== widgetIndex) return widget;
@@ -356,7 +363,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       return { ...widget, parameters: updatedParams };
     }));
   };
-  
+
   const removeParam = (wIdx, pIdx) => setWidgets(w => w.map((x, idx) => {
     if (idx !== wIdx) return x;
     const params = x.parameters.filter((_, pi) => pi !== pIdx);
@@ -369,23 +376,23 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
       if (wIdx !== widgetIndex) return widget;
       const updatedParams = widget.parameters.map((param, pIdx) => {
         if (pIdx === paramIndex) {
-            const updatedParam = {
-                ...param,
-                deviceId: deviceId,
-                name: selectedDevice ? selectedDevice.name : '',
-                keys: []
-            };
+          const updatedParam = {
+            ...param,
+            deviceId: deviceId,
+            name: selectedDevice ? selectedDevice.name : '',
+            keys: []
+          };
 
-            const thresholdsForDevice = existingThresholds[deviceId];
-            if (thresholdsForDevice?.[updatedParam.key]) {
-                const thresholdForKey = thresholdsForDevice[updatedParam.key];
-                updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
-                updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
-            } else {
-                updatedParam.min = '';
-                updatedParam.max = '';
-            }
-            return updatedParam;
+          const thresholdsForDevice = existingThresholds[deviceId];
+          if (thresholdsForDevice?.[updatedParam.key]) {
+            const thresholdForKey = thresholdsForDevice[updatedParam.key];
+            updatedParam.min = thresholdForKey.min !== null ? thresholdForKey.min : '';
+            updatedParam.max = thresholdForKey.max !== null ? thresholdForKey.max : '';
+          } else {
+            updatedParam.min = '';
+            updatedParam.max = '';
+          }
+          return updatedParam;
         }
         return param;
       });
@@ -397,60 +404,59 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
     onNext(widgets);
     const token = localStorage.getItem('tb_token');
     if (!token) {
-        console.error('Authentication token not found.');
-        return;
+      console.error('Authentication token not found.');
+      return;
     }
     const deviceThresholds = {};
     widgets.forEach(widget => {
-        if (widget.type === 'image' || widget.type === 'map' || widget.type === 'table') {
-            return;
+      if (widget.type === 'image' || widget.type === 'map' || widget.type === 'table') {
+        return;
+      }
+      widget.parameters.forEach(param => {
+        if (param.min !== '' || param.max !== '') {
+          if (!deviceThresholds[param.deviceId]) {
+            deviceThresholds[param.deviceId] = {};
+          }
+          deviceThresholds[param.deviceId][param.key] = {
+            min: param.min !== '' ? Number(param.min) : null,
+            max: param.max !== '' ? Number(param.max) : null,
+          };
         }
-        widget.parameters.forEach(param => {
-            if (param.min !== '' || param.max !== '') {
-                if (!deviceThresholds[param.deviceId]) {
-                    deviceThresholds[param.deviceId] = {};
-                }
-                deviceThresholds[param.deviceId][param.key] = {
-                    min: param.min !== '' ? Number(param.min) : null,
-                    max: param.max !== '' ? Number(param.max) : null,
-                };
-            }
-        });
+      });
     });
 
     for (const deviceId in deviceThresholds) {
-        if (Object.keys(deviceThresholds[deviceId]).length > 0) {
-            try {
-                const res = await fetch('/api/thingsboard/saveThresholds', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token,
-                        deviceId: deviceId,
-                        thresholds: deviceThresholds[deviceId],
-                    }),
-                });
-                if (res.status === 401) {
-                  localStorage.clear();
-                  toast.error('Session expired. Please log in again.');
-                  router.push('/');
-                  return;
-                }
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    toast.error(`Failed to save thresholds for device ${deviceId}: ${errorData.error || res.statusText}`);
-                }
-            } catch (err) {
-                console.error(`Error saving thresholds for device ${deviceId}:`, err);
-                toast.error(`Error saving thresholds for device ${deviceId}.`);
-            }
+      if (Object.keys(deviceThresholds[deviceId]).length > 0) {
+        try {
+          const res = await fetch('/api/thingsboard/saveThresholds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token,
+              deviceId: deviceId,
+              thresholds: deviceThresholds[deviceId],
+            }),
+          });
+          if (res.status === 401) {
+            localStorage.clear();
+            toast.error('Session expired. Please log in again.');
+            router.push('/');
+            return;
+          }
+          if (!res.ok) {
+            const errorData = await res.json();
+            toast.error(`Failed to save thresholds for device ${deviceId}: ${errorData.error || res.statusText}`);
+          }
+        } catch (err) {
+          console.error(`Error saving thresholds for device ${deviceId}:`, err);
+          toast.error(`Error saving thresholds for device ${deviceId}.`);
         }
+      }
     }
   };
 
   const formValid = widgets.length > 0 && widgets.every(w => {
     if (w.name.trim() === '') return false;
-
     if (w.type === 'image') {
       return w.parameters.length > 0 && w.parameters[0].imageId;
     } else if (w.type === 'map') {
@@ -468,10 +474,20 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
         const currentParamKeys = p.keys.map(k => k.key).sort();
         const currentParamUnits = p.keys.map(k => k.unit).filter(Boolean);
         return p.deviceId && p.name &&
-               currentParamKeys.length === firstParamKeys.length &&
-               currentParamUnits.length === currentParamKeys.length &&
-               currentParamKeys.every((key, i) => key === firstParamKeys[i]);
+          currentParamKeys.length === firstParamKeys.length &&
+          currentParamUnits.length === currentParamKeys.length &&
+          currentParamKeys.every((key, i) => key === firstParamKeys[i]);
       });
+    } else if (w.type === 'donut') {
+      // Donut chart must have exactly 1 parameter
+      return w.parameters.length === 1 &&
+        w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
+    } else if (w.type === 'pie') {
+      // Pie chart must have at least 2 parameters
+      return w.parameters.length >= 2 &&
+        w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
+    } else if (w.type === 'alarms') {
+      return true;
     } else {
       return w.parameters.length > 0 &&
         w.parameters.every(p => p.deviceId && p.key && p.label.trim() !== '') && w.unit !== '';
@@ -524,8 +540,9 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                     {userAuthority === 'TENANT_ADMIN' && <option value="image">Image</option>}
                     <option value="map">Map</option>
                     <option value="table">Table</option>
+                    <option value="alarms">Alarms</option>
                   </select>
-                  {(w.type !== 'image' && w.type !== 'map' && w.type !== 'card' && w.type !== 'table') && (
+                  {(w.type !== 'image' && w.type !== 'map' && w.type !== 'card' && w.type !== 'table' && w.type !== 'alarms') && (
                     <input
                       type="text"
                       placeholder="Unit"
@@ -545,10 +562,10 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                   {w.type === 'image' ? (
-                    <div className="space-y-4">
+                    <div>
                       <h4 className="font-semibold text-gray-700 mb-2">Image Source</h4>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Select Existing Image:</label>
+                      <label className="block text-sm font-medium text-gray-700">Select Image:</label>
+                      <div className='flex flex-col gap-2 md:flex md:flex-row md:items-center'>
                         <select
                           value={w.parameters[0]?.imageId || ''}
                           onChange={e => updateImageParam(i, 'imageId', e.target.value)}
@@ -561,51 +578,38 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                             </option>
                           ))}
                         </select>
-                      </div>
-                      <div className="border-t pt-4">
-                        <h4 className="font-semibold text-gray-700 mb-2">Or Upload New Image:</h4>
-                        <div>
-                          <label htmlFor={`new-image-file-${w.id}`} className="block text-sm font-medium text-gray-700">Image File:</label>
-                          <input
-                            type="file"
-                            id={`new-image-file-${w.id}`}
-                            accept="image/*"
-                            onChange={e => setNewImageFile(e.target.files[0])}
-                            className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <label htmlFor={`new-image-title-${w.id}`} className="block text-sm font-medium text-gray-700">Image Title:</label>
-                          <input
-                            type="text"
-                            id={`new-image-title-${w.id}`}
-                            placeholder="Enter image title"
-                            value={newImageTitle}
-                            onChange={e => setNewImageTitle(e.target.value)}
-                            className="w-full border rounded-lg p-2 focus:ring-blue-400"
-                          />
-                        </div>
+                        <input type="file" id={`new-image-file-${w.id}`} accept="image/*"
+                          onChange={e => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              setNewImageFile(file);
+                              setNewImageTitle(file.name.replace(/\.[^/.]+$/, "")); // filename without extension
+                            }
+                          }}
+                          className="w-full text-sm file:bg-blue-100 text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-2  00"
+                        />
                         <button
                           type="button"
                           onClick={() => handleImageUpload(w.id)}
-                          disabled={uploadingImage || !newImageFile || !newImageTitle.trim()}
+                          disabled={uploadingImage || !newImageFile}
                           className={clsx(
-                            "mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-                            (uploadingImage || !newImageFile || !newImageTitle.trim()) && "opacity-50 cursor-not-allowed"
+                            "inline-flex items-center px-4 py-2 border border-transparent text-sm rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+                            (uploadingImage || !newImageFile) && "opacity-50 cursor-not-allowed"
                           )}
                         >
-                          {uploadingImage ? 'Uploading...' : <><FiUploadCloud className="mr-2" /> Upload Image</>}
+                          {uploadingImage ? 'Uploading...' : <><FiUploadCloud size={28} className="mr-2" /> Upload Image</>}
                         </button>
                       </div>
-                      {w.parameters[0]?.imageId && (
-                        <p className="text-sm text-gray-600 mt-4">
-                          Currently selected: <span className="font-semibold">{availableImages.find(img => img.id === w.parameters[0]?.imageId)?.title || w.parameters[0].title}</span>
-                        </p>
-                      )}
                       {w.parameters[0]?.publicLink && (
-                        <p className="text-sm text-gray-600 mt-2 break-words">
-                          Link: <a href={`${Tb_Url}${w.parameters[0].publicLink}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Image Preview</a>
-                        </p>
+                        <div className="text-sm mt-2 break-words cursor-pointer text-blue-500 w-max flex items-center"
+                          onClick={() => {
+                            setPreviewImageLink(w.parameters[0].publicLink);
+                            setPreviewImageTitle(w.parameters[0].title);
+                            setShowPreview(true);
+                          }}
+                        ><FaRegImage size={20} className='mr-2' />
+                          Image Preview
+                        </div>
                       )}
                     </div>
                   ) : w.type === 'map' ? (
@@ -625,50 +629,50 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                       )}
                       <div className="space-y-4">
                         {w.parameters.map((p, pi) => {
-                           const selectedDeviceKeys = devices.find(d => d.id === p.deviceId)?.keys || [];
-                           const isInvalid = !p.deviceId || !p.latKey || !p.lonKey;
-                           
-                           return (
+                          const selectedDeviceKeys = devices.find(d => d.id === p.deviceId)?.keys || [];
+                          const isInvalid = !p.deviceId || !p.latKey || !p.lonKey;
+
+                          return (
                             <div
                               key={pi}
                               className={clsx("grid grid-cols-1 md:flex md:gap-5 items-center bg-white rounded-lg px-3 py-2 shadow-sm border",
                                 isInvalid && "border-red-300 ring-2 ring-red-100"
                               )}
                             >
-                                <select
-                                  value={p.deviceId}
-                                  onChange={e => updateParam(i, pi, 'deviceId', e.target.value)}
-                                  className="border rounded-lg p-2 focus:ring-blue-400"
-                                >
-                                  <option value="">Select Device</option>
-                                  {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                                <select
-                                  value={p.latKey}
-                                  onChange={e => updateParam(i, pi, 'latKey', e.target.value)}
-                                  className="border rounded-lg p-2 focus:ring-blue-400"
-                                  disabled={!p.deviceId}
-                                >
-                                  <option value="">Select Latitude Key</option>
-                                  {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
-                                </select>
-                                <select
-                                  value={p.lonKey}
-                                  onChange={e => updateParam(i, pi, 'lonKey', e.target.value)}
-                                  className="border rounded-lg p-2 focus:ring-blue-400"
-                                  disabled={!p.deviceId}
-                                >
-                                  <option value="">Select Longitude Key</option>
-                                  {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
-                                </select>
-                                <button
-                                  type="button"
-                                  onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
-                                  className="text-red-500 hover:text-red-700 outline-none ml-auto"
-                                  title="Remove Device"
-                                >
-                                  <FiTrash2 size={20} />
-                                </button>
+                              <select
+                                value={p.deviceId}
+                                onChange={e => updateParam(i, pi, 'deviceId', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                              >
+                                <option value="">Select Device</option>
+                                {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                              <select
+                                value={p.latKey}
+                                onChange={e => updateParam(i, pi, 'latKey', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                                disabled={!p.deviceId}
+                              >
+                                <option value="">Select Latitude Key</option>
+                                {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                              </select>
+                              <select
+                                value={p.lonKey}
+                                onChange={e => updateParam(i, pi, 'lonKey', e.target.value)}
+                                className="border rounded-lg p-2 focus:ring-blue-400"
+                                disabled={!p.deviceId}
+                              >
+                                <option value="">Select Longitude Key</option>
+                                {selectedDeviceKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => { setWidgetToDelete(i); setParamToDelete(pi); setIsParamDelete(true); }}
+                                className="text-red-500 hover:text-red-700 outline-none ml-auto"
+                                title="Remove Device"
+                              >
+                                <FiTrash2 size={20} />
+                              </button>
                             </div>
                           );
                         })}
@@ -695,7 +699,7 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                           const firstParamKeys = w.parameters[0]?.keys.map(k => k.key).sort();
                           const currentParamKeys = p.keys.map(k => k.key).sort();
                           const isInvalid = firstParamKeys && firstParamKeys.length > 0 && JSON.stringify(firstParamKeys) !== JSON.stringify(currentParamKeys);
-                          
+
                           return (
                             <div key={pi} className={clsx("flex flex-col gap-2 p-3 border rounded-lg bg-white shadow-sm", {
                               'border-red-500 ring-2 ring-red-300': isInvalid
@@ -750,6 +754,10 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         })}
                       </div>
                     </div>
+                  ) : w.type === 'alarms' ? (
+                    <div className="flex justify-center items-center text-gray-500 text-lg">
+                      This widget has no configuration options.
+                    </div>
                   ) : (
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -757,7 +765,12 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
                         <button
                           type="button"
                           onClick={() => addParam(i)}
-                          className="inline-flex items-center text-blue-700 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 font-medium text-sm"
+                          disabled={(w.type === 'donut' && w.parameters.length >= 1)}
+                          className={clsx(
+                            "inline-flex items-center text-blue-700 px-2 py-1 rounded-md bg-blue-100 hover:bg-blue-200 font-medium text-sm",
+                            (w.type === 'donut' && w.parameters.length >= 1) &&
+                            "opacity-50 cursor-not-allowed"
+                          )}
                         >
                           <FiPlus size={18} className="mr-1" /> Add
                         </button>
@@ -876,6 +889,13 @@ export default function CreateDashboardModal({ open, onClose, onNext, existingWi
           </button>
         </div>
       </div>
+      {showPreview && (
+        <ShowPreviewModal
+          ImgUrl={previewImageLink}
+          title={previewImageTitle}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

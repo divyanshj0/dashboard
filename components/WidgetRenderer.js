@@ -7,6 +7,7 @@ import ChemicalChart from './chemicalchart';
 import ImageComponent from './Imagecomponent';
 import MapWidget from './MapWidget';
 import TableComponent from './DynamicTable'
+import AlarmTable from './AlarmTable';
 
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -53,6 +54,8 @@ export default function WidgetRenderer({ config, layout, saveLayout, onLayoutSav
                   return <MapWidget title={w.name} parameters={w.parameters} token={token} geoFence={w.geofence} onGeofenceChange={(geofence)=>{onGeofenceChange(geofence,w.id)} }/>;
                 case 'table':
                   return <TableComponent title={w.name} parameters={w.parameters} token={token} onLatestTimestampChange={onLatestTimestampChange} />;
+                case 'alarms':
+                  return <AlarmTable title={w.name} token={token}/>;
                 default:
                   return (
                     <div className="text-center">
